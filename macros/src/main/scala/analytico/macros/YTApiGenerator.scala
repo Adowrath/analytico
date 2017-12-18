@@ -330,8 +330,8 @@ object YTApiGenerator {
         case List(q"object $objectName extends $parent { ..${body: Seq[Tree]} }") if body.nonEmpty =>
           val properties = body map splitTree
 
-          val statements: Seq[Tree] = properties flatMap generateDefinitions
-          println(statements)
+          val statements = properties flatMap generateDefinitions
+
           c.Expr[Any](
             q"""
               object $objectName extends $parent {

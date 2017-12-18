@@ -1,5 +1,5 @@
 lazy val commonSettings = Seq(
-  organization := "Star-TV",
+  organization := "github.adowrath",
   description := "Analytico - Analytics for you",
   version := "0.1",
   scalaVersion := "2.12.4",
@@ -30,11 +30,19 @@ lazy val commonSettings = Seq(
     "-sourcepath", (baseDirectory.value / "src" / "main" / "scala").getAbsolutePath
   ),
   autoAPIMappings in Compile in doc := true,
+  publishMavenStyle := true,
 
   /**
     * Das Compiler-Plugin muss auf beiden Versionen aktiviert sein.
     */
-  addCompilerPlugin(paradiseDependency)
+  addCompilerPlugin(paradiseDependency),
+
+  /**
+    * Damit IntelliJ einfacher eigene Rebuilds machen kann.
+    * https://github.com/JetBrains/sbt-ide-settings/tree/750b993453fb3d1f31f371968d06e3fc792870a1#using-the-settings-without-plugin
+    */
+  SettingKey[Option[File]]("ide-output-directory") in Compile := Option(baseDirectory.value / "target" / "idea" / "classes"),
+  SettingKey[Option[File]]("ide-output-directory") in Test := Option(baseDirectory.value / "target" / "idea" / "test-classes")
 )
 
 lazy val paradiseDependency = "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
@@ -52,6 +60,8 @@ lazy val rootDependencies = Seq(
 )
 
 lazy val root = (project in file("."))
+  .settings(publishArtifact := false)
+  .settings(commonSettings)
   .aggregate(analytico, macros)
 
 lazy val macros = (project in file("macros"))
