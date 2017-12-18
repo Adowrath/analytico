@@ -51,7 +51,7 @@ trait YoutubeDataAccess extends GenericYTAccess {
       .setApplicationName(applicationTitle)
       .build()
 
-  def yt(applicationTitle: String)(implicit evidence: Requires[YoutubeReadOnly]): YouTubeData[Scopes] =
+  def youtubeData(applicationTitle: String)(implicit evidence: Requires[YoutubeReadOnly]): YouTubeData[Scopes] =
     new YouTubeData[Scopes](buildDataAPI(applicationTitle))
 }
 

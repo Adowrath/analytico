@@ -2,7 +2,6 @@ package analytico
 
 import java.io.{ IOException, PrintStream }
 
-import analytico.macros.YTApiGenerator._
 import analytico.youtube.YTAuth
 import analytico.youtube.YTScope._
 import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
@@ -12,81 +11,20 @@ import scala.collection.JavaConverters._
 
 object Main {
 
-//  val dataAPI: Any = api {
-//    -'items {
-//      -'kind
-//      +'id
-//      +'snippet {
-//        -'thumbnails
-//      }
-//    }
-//  }
-
-
-
-  @ytApi object Items {
-    -'items
-  }
-  @ytApi object Items2 {
-    +'items
-  }
-  @ytApi object Items3 {
-    +'items
-    +'etag
-  }
-  @ytApi object Items4 {
-    +'items {
-      +'snippet
-    }
-  }
-  @ytApi object Items5 {
-    +'items {
-      -'snippet
-      +'title
-    }
-  }
-
-
   def main(args: Array[String]): Unit = {
-    println(Items.items)
-    println(Items5.items)
-
-//    println(m("aalpha"))
-//    val a = ""
-//    println(m(a + "f"))
-//    m1(_.alpha)
-//    m1(_.alpha(_.beta))
+    example()
   }
 
   def example(): Unit = {
     val api = YTAuth.authorize[YoutubeReadOnly && AnalyticsReadOnly]("analyticsAndYoutube")
 
     val analytics = api buildAnalytics "test"
+    val youtube = api youtubeData "test"
 
-    val youtube = api buildDataAPI "test"
-
-    val parts = List(
-      //      "id",
-      "snippet",
-      "topicDetails"
-    )
-
-    // https://developers.google.com/youtube/v3/docs/channels
-    val channelRequest = youtube.channels.list(parts mkString ",")
-    channelRequest.setMine(true)
-    channelRequest.setFields("items(id, snippet(title, thumbnails/high))")
-    val channels = channelRequest.execute
+    val channels = youtube.channels.mine.list(_.items(_.id, _.snippet(_.title, _.thumbnails(_.high))))
 
     println(channels)
     println(channels.getItems.get(0).getSnippet.getThumbnails.getHigh.getHeight)
-
-    val youtube2 = api yt "test"
-
-    val channels2 = youtube2.channels.mine.list(_.items(_.id, _.snippet(_.thumbnails(_.high))))
-    //val channels3 = youtube2.channels.mine.list(_.items2(_.id, _.snippet(_.thumbnails(_.high))))
-
-    println(channels2)
-    println(channels2.getItems.get(0).getSnippet.getThumbnails.getHigh.getHeight)
 
     val listOfChannels = channels.getItems
     // The user's default channel is the first item in the list.
@@ -136,8 +74,14 @@ object Main {
     def fromResults(results: ResultTable): Seq[ViewCount] = {
       val r1 = results.getRows
       val r2 = Option(r1)
-      val r3 = r2 map { _.asScala.toList }
-      val r4 = r3 map { _ map { _.asScala.toList } }
+      val r3 = r2 map {
+        _.asScala.toList
+      }
+      val r4 = r3 map {
+        _ map {
+          _.asScala.toList
+        }
+      }
       val r5 = r4 getOrElse Nil
       r5 map { row =>
         ViewCount(

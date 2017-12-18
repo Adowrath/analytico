@@ -31,6 +31,7 @@ lazy val commonSettings = Seq(
   ),
   autoAPIMappings in Compile in doc := true,
   publishMavenStyle := true,
+  libraryDependencies := rootDependencies,
 
   /**
     * Das Compiler-Plugin muss auf beiden Versionen aktiviert sein.
@@ -60,7 +61,10 @@ lazy val rootDependencies = Seq(
 )
 
 lazy val root = (project in file("."))
-  .settings(publishArtifact := false)
+  .settings(
+    publishArtifact := false,
+    name := "analytico-root"
+  )
   .settings(commonSettings)
   .aggregate(analytico, macros)
 
@@ -74,7 +78,6 @@ lazy val macros = (project in file("macros"))
 lazy val analytico = (project in file("analytico"))
   .settings(
     name := "analytico",
-    commonSettings,
-    libraryDependencies ++= rootDependencies
+    commonSettings
   )
   .dependsOn(macros)
