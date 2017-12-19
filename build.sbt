@@ -1,5 +1,5 @@
 lazy val commonSettings = Seq(
-  organization := "github.adowrath",
+  organization := "com.github.adowrath",
   description := "Analytico - Analytics for you",
   version := "0.1",
   scalaVersion := "2.12.4",
@@ -32,11 +32,17 @@ lazy val commonSettings = Seq(
   autoAPIMappings in Compile in doc := true,
   publishMavenStyle := true,
   libraryDependencies := rootDependencies,
+  publishArtifact := false,
 
   /**
-    * Das Compiler-Plugin muss auf beiden Versionen aktiviert sein.
+    * Das Compiler-Plugin muss sowohl bei der Makro-Definition als auch beim Expander vorhanden sein.
     */
   addCompilerPlugin(paradiseDependency),
+
+  /**
+    * Cross-Building? Warum nicht!
+    */
+  crossScalaVersions := Seq("2.11.12", "2.12.4", "2.13.0-M2"),
 
   /**
     * Damit IntelliJ einfacher eigene Rebuilds machen kann.
@@ -48,36 +54,44 @@ lazy val commonSettings = Seq(
 
 lazy val paradiseDependency = "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
 
-lazy val rootDependencies = Seq(
+lazy val excelDependencies = Seq(
   "org.apache.poi" % "poi" % "3.17",
-  "org.apache.poi" % "poi-ooxml" % "3.17",
+  "org.apache.poi" % "poi-ooxml" % "3.17"
+)
+
+lazy val youtubeApis = Seq(
   "com.google.apis" % "google-api-services-youtube" % "v3-rev182-1.22.0",
   "com.google.apis" % "google-api-services-youtubeAnalytics" % "v1-rev63-1.22.0",
   "com.google.apis" % "google-api-services-youtubereporting" % "v1-rev10-1.22.0",
   "org.codehaus.jackson" % "jackson-mapper-asl" % "1.9.4",
-  "com.google.http-client" % "google-http-client-jackson2" % "1.20.0",
-  "com.google.oauth-client" % "google-oauth-client-jetty" % "1.20.0",
+  "com.google.http-client" % "google-http-client-jackson2" % "1.22.0",
+  "com.google.oauth-client" % "google-oauth-client-jetty" % "1.22.0",
   "com.google.collections" % "google-collections" % "1.0"
 )
 
+lazy val rootDependencies =
+  excelDependencies ++ youtubeApis
+
 lazy val root = (project in file("."))
   .settings(
-    publishArtifact := false,
-    name := "analytico-root"
+    commonSettings,
+    name := "analytico-root",
+    run in Compile := {
+      run in Compile in analytico
+    }.evaluated
   )
-  .settings(commonSettings)
   .aggregate(analytico, macros)
 
 lazy val macros = (project in file("macros"))
   .settings(
-    name := "analytico-macros",
     commonSettings,
+    name := "analytico-macros",
     libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
   )
 
 lazy val analytico = (project in file("analytico"))
   .settings(
-    name := "analytico",
-    commonSettings
+    commonSettings,
+    name := "analytico"
   )
   .dependsOn(macros)
