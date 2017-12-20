@@ -46,13 +46,13 @@ trait AnalyticsAccess extends GenericYTAccess {
   * @version v1.0
   */
 trait YoutubeDataAccess extends GenericYTAccess {
+  def youtubeData(applicationTitle: String)(implicit evidence: Requires[YoutubeReadOnly]): YouTubeData[Scopes] =
+    new YouTubeData[Scopes](buildDataAPI(applicationTitle))
+
   def buildDataAPI(applicationTitle: String)(implicit evidence: Requires[YoutubeReadOnly]): YouTube =
     new YouTube.Builder(httpTransport, jsonFactory, credential)
       .setApplicationName(applicationTitle)
       .build()
-
-  def youtubeData(applicationTitle: String)(implicit evidence: Requires[YoutubeReadOnly]): YouTubeData[Scopes] =
-    new YouTubeData[Scopes](buildDataAPI(applicationTitle))
 }
 
 /**

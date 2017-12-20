@@ -18,20 +18,14 @@ import analytico.youtube.YTScope._
 sealed abstract class YTScope(val scopes: Set[String]) {
   /**
     * Der Resultierende Scope-Typ.
-    * Ist dafür da, um `ScopeA & ScopeB` für das Credential in `ScopeA with ScopeB` umzuschreiben.
+    * Ist dafür da, um `ScopeA && ScopeB` für das Credential in `ScopeA with ScopeB` umzuschreiben.
     */
   type Result <: YTScope
 
-  /**
-    * Convenience-Konstruktor.
-    *
-    * @param singleScope ein einzelner Scope.
-    *
-    * @return
-    */
-  def this(singleScope: String) = this(Set(singleScope))
-
   override final def toString: String = s"YTScopes: ${scopes.mkString("\n          ")}"
+
+  /** Convenience-Konstruktor für einen einzelnen Scope. */
+  def this(singleScope: String) = this(Set(singleScope))
 
   /**
     * Kombinator für zwei Scopes, analog zum Typ [[YTScope#&& &&]].
@@ -55,39 +49,6 @@ object YTScope {
     * @tparam S2 der andere Scope Typ
     */
   type &&[S1 <: YTScope, S2 <: YTScope] = CombinedScope[S1, S2]
-
-  /**
-    * Eine Kombination aus einer Mehrzahl an Scopes.
-    *
-    * @param s1 der erste Scope
-    * @param s2 der zweite Scope
-    * @tparam S1 der Typ des ersten Scopes.
-    * @tparam S2 der Typ des zweiten Scopes.
-    */
-  final class CombinedScope[+S1 <: YTScope, +S2 <: YTScope](val s1: S1, val s2: S2) extends YTScope(s1.scopes | s2.scopes) {
-
-    /**
-      * Kombiniert die Datentypen der zwei Scopes.
-      *
-      * @example
-      * {{{
-      * // implicitly[A =:= B] ist dafür da, um zu schauen, ob A und B derselbe Typ sind.
-      *
-      * implicitly[(S1 & S2)#Result =:= S1 with S2]
-      * // Ein einfaches & ist Äquivalent zu with.
-      *
-      * implicitly[((S1 & S2) & S3) =:= (S1 & (S2 & S3))] // Fehler: Nicht gleich.
-      * // Während & nicht assoziativ ist...
-      *
-      * implicitly[((S1 & S2) & S3)#Result =:= (S1 & (S2 & S3))#Result]
-      * // ...führt ein Aufruf von #Result zu derselben flachen Struktur:
-      *
-      * implicitly[((S1 & S2) & S3)#Result =:= S1 with S2 with S3]
-      * implicitly[(S1 & (S2 & S3))#Result =:= S1 with S2 with S3]
-      * }}}
-      */
-    override type Result = s1.Result with s2.Result
-  }
 
   /**
     * Der implizite Konstruktor des kombinierten Scopes.
@@ -122,4 +83,38 @@ object YTScope {
   }
 
   type YoutubeReadOnly = YoutubeReadOnly.type
+
+  /**
+    * Eine Kombination aus einer Mehrzahl an Scopes.
+    *
+    * @param s1 der erste Scope
+    * @param s2 der zweite Scope
+    * @tparam S1 der Typ des ersten Scopes.
+    * @tparam S2 der Typ des zweiten Scopes.
+    */
+  final class CombinedScope[+S1 <: YTScope, +S2 <: YTScope](val s1: S1, val s2: S2) extends YTScope(s1.scopes | s2.scopes) {
+
+    /**
+      * Kombiniert die Datentypen der zwei Scopes.
+      *
+      * @example
+      * {{{
+      * // implicitly[A =:= B] ist dafür da, um zu schauen, ob A und B derselbe Typ sind.
+      *
+      * implicitly[(S1 && S2)#Result  =:= S1 with S2]
+      * // Ein einfaches && ist Äquivalent zu with.
+      *
+      * implicitly[((S1 && S2) && S3) =:= (S1 && (S2 && S3))] // Fehler: Nicht gleich.
+      * // Während && nicht assoziativ ist...
+      *
+      * implicitly[((S1 && S2)  && S3) #Result =:= (S1 && (S2 && S3))#Result]
+      * // ...führt ein Aufruf von #Result zu derselben flachen Struktur:
+      *
+      * implicitly[((S1 &&  S2) && S3) #Result =:= S1 with S2 with S3]
+      * implicitly[( S1 && (S2  && S3))#Result =:= S1 with S2 with S3]
+      * }}}
+      */
+    override type Result = s1.Result with s2.Result
+  }
+
 }

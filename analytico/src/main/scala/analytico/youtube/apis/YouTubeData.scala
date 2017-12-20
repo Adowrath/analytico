@@ -2,7 +2,6 @@ package analytico
 package youtube
 package apis
 
-import analytico.youtube.YTScope
 import com.google.api.services.youtube.YouTube
 import com.google.api.services.youtube.model.ChannelListResponse
 

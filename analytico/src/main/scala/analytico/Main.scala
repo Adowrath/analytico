@@ -11,10 +11,16 @@ import scala.collection.JavaConverters._
 
 object Main {
 
+  val start = "2017-11-13"
+  val end = "2017-11-19"
+
   def main(args: Array[String]): Unit = {
     example()
   }
 
+  /**
+    * Kleiner Test der APIs.
+    */
   def example(): Unit = {
     val api = YTAuth.authorize[YoutubeReadOnly && AnalyticsReadOnly]("analyticsAndYoutube")
 
@@ -36,10 +42,6 @@ object Main {
     printData(System.out, "Views Over Time.", executeViewsOverTimeQuery(analytics, channelId))
   }
 
-
-  val start = "2017-11-13"
-  val end = "2017-11-19"
-
   /**
     * Retrieve the views and unique viewers per day for the channel.
     *
@@ -59,41 +61,6 @@ object Main {
         "views,estimatedMinutesWatched,averageViewDuration")
       .setDimensions("liveOrOnDemand")
       .execute
-  }
-
-  final case class ViewCount(viewType: ViewCount.ViewType, views: BigDecimal, estimatedMinutes: BigDecimal, averageDuration: BigDecimal)
-
-  object ViewCount {
-
-    sealed trait ViewType
-
-    object OnDemand extends ViewType
-
-    object Live extends ViewType
-
-    def fromResults(results: ResultTable): Seq[ViewCount] = {
-      val r1 = results.getRows
-      val r2 = Option(r1)
-      val r3 = r2 map {
-        _.asScala.toList
-      }
-      val r4 = r3 map {
-        _ map {
-          _.asScala.toList
-        }
-      }
-      val r5 = r4 getOrElse Nil
-      r5 map { row =>
-        ViewCount(
-          row.head match {
-            case "LIVE" ⇒ Live
-            case "ON_DEMAND" ⇒ OnDemand
-          },
-          BigDecimal.exact(row(1).asInstanceOf[java.math.BigDecimal]),
-          BigDecimal.exact(row(2).asInstanceOf[java.math.BigDecimal]),
-          BigDecimal.exact(row(3).asInstanceOf[java.math.BigDecimal]))
-      }
-    }
   }
 
   /**
@@ -141,4 +108,42 @@ object Main {
         writer.println()
     }
   }
+
+  final case class ViewCount(viewType: ViewCount.ViewType, views: BigDecimal, estimatedMinutes: BigDecimal, averageDuration: BigDecimal)
+
+  object ViewCount {
+
+    /**
+      * Extrahiert die ViewCount-Resultate aus einer ResultTable.
+      *
+      * @param results die ResultTable von der YouTube-API.
+      *
+      * @return eine Liste aller ViewCounts.
+      */
+    def fromResults(results: ResultTable): Seq[ViewCount] = {
+      results.getRows match {
+        case null ⇒
+          Nil
+        case list ⇒
+          list.asScala.map(_.asScala) map { row =>
+            ViewCount(
+              row.head match {
+                case "LIVE" ⇒ Live
+                case "ON_DEMAND" ⇒ OnDemand
+              },
+              BigDecimal.exact(row(1).asInstanceOf[java.math.BigDecimal]),
+              BigDecimal.exact(row(2).asInstanceOf[java.math.BigDecimal]),
+              BigDecimal.exact(row(3).asInstanceOf[java.math.BigDecimal]))
+          }
+      }
+    }
+
+    sealed trait ViewType
+
+    object OnDemand extends ViewType
+
+    object Live extends ViewType
+
+  }
+
 }

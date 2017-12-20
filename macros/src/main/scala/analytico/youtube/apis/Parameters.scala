@@ -29,10 +29,10 @@ class ApiParameter(val name: String, val isPart: Boolean) {
   * @param innerParameters ein Aufruf von [[apply]] konstruiert ein neues Objekt mit den definierten Kind-Parametern.
   * @tparam Supply woher stammen die Kind-Parameter? Wird zu `parameterSupply.type`, aber auch von aussen sichtbar.
   */
-class ApplicableParameter[Supply <: Singleton](name: String,
-                                               parameterSupply: Supply,
-                                               isPart: Boolean,
-                                               innerParameters: ApiParameter*)
+class ApplicableParameter[Supply <: scala.Singleton](name: String,
+                                                     val parameterSupply: Supply,
+                                                     isPart: Boolean,
+                                                     val innerParameters: ApiParameter*)
   extends ApiParameter(name, isPart) {
 
   /**
@@ -40,7 +40,8 @@ class ApplicableParameter[Supply <: Singleton](name: String,
     *
     * @param subItems die `_.param` Aufrüfe für alle Kind-Parameter.
     *
-    * @return einen neuen Parametern.
+    * @return einen neuen Parameter. Zwar ein [[ApplicableParameter]],
+    *         aber `apply` soll darauf nicht mehr ausgeführt werden.
     */
   def apply(subItems: (Supply ⇒ ApiParameter)*): ApiParameter = {
     new ApplicableParameter(name, parameterSupply, isPart, subItems.map(_ (parameterSupply)): _*)
@@ -68,9 +69,9 @@ class ApplicableParameter[Supply <: Singleton](name: String,
   }
 
   override def getParts: Seq[ApiParameter] =
-    if(isPart) {
-      new ApiParameter(name, isPart) :: (List[ApiParameter]() /: innerParameters) (_ ++ _.getParts)
-    } else {
-      (List[ApiParameter]() /: innerParameters) (_ ++ _.getParts)
-    }
+    (if(isPart)
+      Seq(new ApiParameter(name, isPart))
+    else
+      Nil) ++ innerParameters.flatMap(_.getParts)
+
 }
