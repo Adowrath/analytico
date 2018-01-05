@@ -1,7 +1,7 @@
 package analytico
 
 import java.io.{ File, FileOutputStream, IOException }
-import java.time.LocalDate
+import java.time.{ DayOfWeek, LocalDate }
 
 import analytico.youtube.YTAuth
 import analytico.youtube.YTScope._
@@ -15,17 +15,14 @@ import scala.collection.JavaConverters._
 
 object Main {
 
-  val start = "2017-11-06"
-  val end = "2017-11-19"
-
   def main(args: Array[String]): Unit = {
-    example(getEntireYear(2017) match { case (a, b) ⇒ (a.toString, b.toString) })
+    example(entireYear(2017) match { case (a, b) ⇒ (a.toString, b.toString) })
   }
 
   /**
     * Kleiner Test der APIs.
     */
-  def example(dateRange: (String, String) = (start, end)): Unit = {
+  def example(dateRange: (String, String)): Unit = {
     val api = YTAuth.authorize[YoutubeReadOnly && AnalyticsReadOnly]("analyticsAndYoutube")
 
     val analytics = api buildAnalytics "test"
@@ -165,19 +162,13 @@ object Main {
     *
     * @return ein Tuple aus Anfangs- und Enddatum.
     */
-  def getEntireYear(year: Int): (LocalDate, LocalDate) = {
-    import java.time.DayOfWeek._
+  def entireYear(year: Int): (LocalDate, LocalDate) = {
     val firstWeek = YearWeek.of(year, 1)
-    val lastWeek = {
-      // Falls das Jahr 53 Wochen hat, nehmen wir die 53te Woche.
-      val lw = YearWeek.of(year, 53)
-      if(year == lw.getYear)
-        lw
-      else
-        YearWeek.of(year, 52)
-    }
+    // Falls das Jahr 53 Wochen hat, nehmen wir die 53te Woche.
+    val lastWeek = YearWeek.of(year, if(firstWeek.is53WeekYear()) 53 else 52)
+
     // Wochen gehen von Montag bis Sonntag, ihr Amis!
-    (firstWeek atDay MONDAY, lastWeek atDay SUNDAY)
+    (firstWeek atDay DayOfWeek.MONDAY, lastWeek atDay DayOfWeek.SUNDAY)
   }
 
   /**
@@ -225,7 +216,7 @@ object Main {
           s"Es war jedoch: ${results.getColumnHeaders.asScala.map(_.getName)}")
 
       Option(results.getRows).fold(Nil: Seq[ViewCount]) { list ⇒
-        val weeklyStats = list.asScala.toList.map(_.asScala.toList) groupBy getYearWeek
+        val weeklyStats = list.asScala.map(_.asScala) groupBy getYearWeek
 
         weeklyStats.flatMap { case (weekInYear, stats) ⇒
           stats.partition(_ (1) == "LIVE") match {
@@ -247,11 +238,11 @@ object Main {
 
     /** Parst das Jahr und die Woche aus der Liste heraus. */
     private[this]
-    def getYearWeek(l: List[AnyRef]): YearWeek = YearWeek.from(LocalDate.parse(l.head.toString))
+    def getYearWeek(l: Seq[AnyRef]): YearWeek = YearWeek.from(LocalDate.parse(l.head.toString))
 
     /** Summiert die View-Zahlen und Minutenwerte über eine Woche hinweg. `AnyRef` da `ResultTable`. */
     private[this]
-    def collectStats(l: List[List[AnyRef]]): Stats =
+    def collectStats(l: Seq[Seq[AnyRef]]): Stats =
       l.foldLeft(emptyStats) {
         case ((views, minutes), row) ⇒
           (views + BigDecimal.exact(row(2).asInstanceOf[java.math.BigDecimal])) →
