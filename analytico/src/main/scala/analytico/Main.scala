@@ -224,28 +224,24 @@ object Main {
         s"Die ResultTable muss die richtige Struktur haben: $tableStructure.\n" +
           s"Es war jedoch: ${results.getColumnHeaders.asScala.map(_.getName)}")
 
-      results.getRows match {
-        case null ⇒
-          Nil
-        case list ⇒
-          val weeklyStats = list.asScala.toList.map(_.asScala.toList) groupBy getYearWeek
+      Option(results.getRows).fold(Nil: Seq[ViewCount]) { list ⇒
+        val weeklyStats = list.asScala.toList.map(_.asScala.toList) groupBy getYearWeek
 
-          (weeklyStats mapValues { stats ⇒
-            val (live: Stats, demand: Stats) = {
-              val (l, d) = stats.partition(_ (1) == "LIVE")
-              (collectStats(l), collectStats(d))
-            }
-            // Live, On Demand und Komplett.
-            (live, demand, live._1 + demand._1, live._2 + demand._2)
-          } flatMap { case (yearWeek, ((liveViews, liveMinutes), (demandViews, demandMinutes), totalViews, totalMinutes)) ⇒
-            List(
-              ViewCount(yearWeek, Live, liveViews, liveMinutes),
-              ViewCount(yearWeek, OnDemand, demandViews, demandMinutes),
-              ViewCount(yearWeek, Combined, totalViews, totalMinutes)
-            )
-          }).toList sortBy {
-            _.yearWeek // Nach Jahr und Woche sortieren.
+        weeklyStats.flatMap { case (weekInYear, stats) ⇒
+          stats.partition(_ (1) == "LIVE") match {
+            case (liveStats, onDemandStats) ⇒
+              collectStats(liveStats) → collectStats(onDemandStats) match {
+                case ((liveViews, liveMinutes), (onDemandViews, onDemandMinutes)) ⇒
+                  // Alle 3 Arten der Views kombinieren.
+                  Seq(
+                    ViewCount(weekInYear, Live, liveViews, liveMinutes),
+                    ViewCount(weekInYear, OnDemand, onDemandViews, onDemandMinutes),
+                    ViewCount(weekInYear, Combined, liveViews + onDemandViews, liveMinutes + onDemandMinutes)
+                  )
+              }
           }
+        }.toSeq
+          .sortBy(_.yearWeek)
       }
     }
 
@@ -263,13 +259,25 @@ object Main {
       }
 
     /** Was für eine Art Statistik ist es? */
-    sealed trait ViewType { override def toString: String }
+    sealed trait ViewType {
+      override def toString: String
+    }
+
     /** Zuschauerstatistiken für die Livestreams. */
-    object Live extends ViewType { override def toString: String = "ViewType.Live" }
+    object Live extends ViewType {
+      override def toString: String = "ViewType.Live"
+    }
+
     /** Zuschauerstatistiken für die normalen Videos. */
-    object OnDemand extends ViewType { override def toString: String = "ViewType.OnDemand" }
+    object OnDemand extends ViewType {
+      override def toString: String = "ViewType.OnDemand"
+    }
+
     /** Die gesamten Zuschauerstatistiken, Live und On Demand kombiniert. */
-    object Combined extends ViewType { override def toString: String = "ViewType.Combined" }
+    object Combined extends ViewType {
+      override def toString: String = "ViewType.Combined"
+    }
+
   }
 
 }

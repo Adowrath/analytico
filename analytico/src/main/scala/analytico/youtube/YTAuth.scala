@@ -21,11 +21,11 @@ import scala.collection.JavaConverters._
   * @version 1.0
   */
 object YTAuth {
-  private lazy val CREDENTIALS_DIRECTORY = ".oauth-credentials"
-  private lazy val TRANSPORT = new NetHttpTransport()
-  private lazy val FACTORY = new JacksonFactory()
+  private[this] val credentialsDir = ".oauth-credentials"
+  private[this] val httpTransport = new NetHttpTransport()
+  private[this] val jsonFactory = new JacksonFactory()
 
-  private lazy val userHome = System.getProperty("user.home")
+  private[this] val userHome = System.getProperty("user.home")
 
   /**
     * Gibt ein für den angegebenen Scope authorisiertes Credential zurück.
@@ -51,7 +51,7 @@ object YTAuth {
     */
   def authorize[Scopes <: YTScope](datastoreName: String, reauthorize: Boolean = false)(implicit scopes: Scopes): YTAccess[scopes.Result] = {
     val clientSecretReader = new InputStreamReader(getClass.getResourceAsStream("/client_secrets.json"))
-    val clientSecrets = GoogleClientSecrets.load(FACTORY, clientSecretReader)
+    val clientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecretReader)
 
     // Checks that the defaults have been replaced (Default = "Enter X here").
     if(clientSecrets.getDetails.getClientId.startsWith("Enter") || clientSecrets.getDetails.getClientSecret.startsWith("Enter ")) {
@@ -60,7 +60,7 @@ object YTAuth {
     }
 
 
-    val credentialsFile = new File(userHome + "/" + CREDENTIALS_DIRECTORY)
+    val credentialsFile = new File(userHome + "/" + credentialsDir)
     // Falls eine Re-Authorisierung gewünscht ist.
     if(reauthorize)
       java.nio.file.Files.delete(credentialsFile.toPath.resolve(datastoreName))
@@ -69,7 +69,7 @@ object YTAuth {
     val fileDataStoreFactory = new FileDataStoreFactory(credentialsFile)
     val datastore = fileDataStoreFactory.getDataStore[StoredCredential](datastoreName)
 
-    val flow = new GoogleAuthorizationCodeFlow.Builder(TRANSPORT, FACTORY, clientSecrets, scopes.scopes.asJava)
+    val flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, clientSecrets, scopes.scopes.asJava)
       .setCredentialDataStore(datastore)
       .build()
 
@@ -78,7 +78,7 @@ object YTAuth {
     // Authorize.
     new YTAccess[scopes.Result](
       credential = new AuthorizationCodeInstalledApp(flow, localReceiver).authorize("user"),
-      jsonFactory = FACTORY,
-      httpTransport = TRANSPORT)
+      jsonFactory = jsonFactory,
+      httpTransport = httpTransport)
   }
 }

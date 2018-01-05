@@ -56,7 +56,7 @@ class YouTubeData[S <: YTScope](apiAccess: YouTube) {
         _.repr
       } mkString ", "
       val parts = parameters flatMap {
-        _.getParts
+        _.parts
       } map {
         _.repr
       } mkString ","

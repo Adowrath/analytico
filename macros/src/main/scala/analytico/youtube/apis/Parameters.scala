@@ -13,7 +13,7 @@ class ApiParameter(val name: String, val isPart: Boolean) {
   def repr: String = name
 
   /** @return Alle Parameter welche auch Parts sind. */
-  def getParts: Seq[ApiParameter] =
+  def parts: Seq[ApiParameter] =
     if(isPart)
       this :: Nil
     else
@@ -62,16 +62,16 @@ class ApplicableParameter[Supply <: scala.Singleton](name: String,
     *   parent                    .repr == "parent"
     * }}}
     */
-  override def repr: String = innerParameters.length match {
-    case 0 ⇒ super.repr
-    case 1 ⇒ s"${super.repr}/${innerParameters.head.repr}"
+  override def repr: String = innerParameters match {
+    case Nil ⇒ super.repr
+    case single :: Nil ⇒ s"${super.repr}/${single.repr}"
     case _ ⇒ innerParameters.map(_.repr).mkString(s"${super.repr}(", ", ", ")")
   }
 
-  override def getParts: Seq[ApiParameter] =
+  override def parts: Seq[ApiParameter] =
     (if(isPart)
       Seq(new ApiParameter(name, isPart))
     else
-      Nil) ++ innerParameters.flatMap(_.getParts)
+      Nil) ++ innerParameters.flatMap(_.parts)
 
 }
