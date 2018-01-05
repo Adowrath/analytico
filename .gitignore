@@ -6,3 +6,6 @@
 .idea
 # Compiled class file
 **/target/
+
+# XLSX Files generated from the Apache POI library.
+*.xlsx

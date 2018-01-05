@@ -4,7 +4,7 @@ package macros
 import analytico.youtube.apis.{ ApiParameter, ApplicableParameter }
 
 import scala.annotation.{ StaticAnnotation, compileTimeOnly }
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable
 import scala.language.experimental.macros
 import scala.reflect.macros._
 
@@ -96,13 +96,13 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
   /**
     * Entscheidet anhand des Methodennamens, ob die Eigenschaft auch ein Part der Anfrage ist.
     *
-    * Die Methode `unary_$``minus` stellt ein `-'symbol` dar, eine einfache Eigenschaft.
+    * Die Methode `unary_-` stellt ein `-'symbol` dar, eine einfache Eigenschaft.
     *
-    * Die Methode `unary_$``plus`  stellt ein `+'symbol` dar, eine Eigenschaft welche auch ein Part ist.
+    * Die Methode `unary_+`  stellt ein `+'symbol` dar, eine Eigenschaft welche auch ein Part ist.
     */
-  def isPart(name: TermName): Option[Boolean] = name match {
-    case TermName("unary_$minus") ⇒ Some(false)
-    case TermName("unary_$plus") ⇒ Some(true)
+  def isPart(name: TermName): Option[Boolean] = name.decodedName match {
+    case TermName("unary_-") ⇒ Some(false)
+    case TermName("unary_+") ⇒ Some(true)
     case _ ⇒ None
   }
 
@@ -144,7 +144,7 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
     */
   def generateDefinitions(property: Property): Seq[Tree] = {
     /* Kleine Utility-Methode um den syntaktischen Noise in der `(emptyrightTreeBuffer /: seq)`-Zeile zu reduzieren. */
-    def emptyRightTreeBuffer: Either[Unit, ListBuffer[Tree]] = Right(ListBuffer())
+    def emptyRightTreeBuffer: Either[Unit, mutable.ListBuffer[Tree]] = Right(mutable.ListBuffer())
 
     val name = property.name
     val term = TermName(name)

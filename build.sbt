@@ -12,11 +12,18 @@ lazy val commonSettings = Seq(
     "-Xfuture",
     "-Xlint",
     "-Yno-adapted-args",
+    "-Yrangepos",
+    "-Ywarn-adapted-args",
     "-Ywarn-dead-code",
+    "-Ywarn-extra-implicit",
+    "-Ywarn-inaccessible",
+    "-Ywarn-infer-any",
+    "-Ywarn-nullary-override",
+    "-Ywarn-nullary-unit",
     "-Ywarn-numeric-widen",
-    "-Ywarn-value-discard",
-    "-Ywarn-unused",
-    "-Yrangepos"
+    "-Ywarn-unused:_",
+    "-Ywarn-unused-import",
+    "-Ywarn-value-discard"
   ),
   scalacOptions in Compile in doc ++= Seq(
     "-groups",
@@ -54,6 +61,13 @@ lazy val commonSettings = Seq(
 
 lazy val paradiseDependency = "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
 
+lazy val miscDependencies = Seq(
+  /**
+    * Für bessere Datumsmanipulation.
+    */
+  "org.threeten" % "threeten-extra" % "1.2"
+)
+
 lazy val excelDependencies = Seq(
   "org.apache.poi" % "poi" % "3.17",
   "org.apache.poi" % "poi-ooxml" % "3.17"
@@ -70,7 +84,7 @@ lazy val youtubeApis = Seq(
 )
 
 lazy val rootDependencies =
-  excelDependencies ++ youtubeApis
+  miscDependencies ++ excelDependencies ++ youtubeApis
 
 lazy val root = (project in file("."))
   .settings(

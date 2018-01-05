@@ -49,7 +49,7 @@ object YTAuth {
     * @since 28.11.2017
     * @version 1.0
     */
-  def authorize[Scopes <: YTScope](datastoreName: String)(implicit scopes: Scopes): YTAccess[scopes.Result] = {
+  def authorize[Scopes <: YTScope](datastoreName: String, reauthorize: Boolean = false)(implicit scopes: Scopes): YTAccess[scopes.Result] = {
     val clientSecretReader = new InputStreamReader(getClass.getResourceAsStream("/client_secrets.json"))
     val clientSecrets = GoogleClientSecrets.load(FACTORY, clientSecretReader)
 
@@ -59,8 +59,14 @@ object YTAuth {
       System.exit(1)
     }
 
-    // This creates the credentials datastore at ~/.oauth-credentials/${credentialDatastore}
-    val fileDataStoreFactory = new FileDataStoreFactory(new File(userHome + "/" + CREDENTIALS_DIRECTORY))
+
+    val credentialsFile = new File(userHome + "/" + CREDENTIALS_DIRECTORY)
+    // Falls eine Re-Authorisierung gewünscht ist.
+    if(reauthorize)
+      java.nio.file.Files.delete(credentialsFile.toPath.resolve(datastoreName))
+
+    // This creates the credentials datastore at ~/.oauth-credentials/${datastoreName}
+    val fileDataStoreFactory = new FileDataStoreFactory(credentialsFile)
     val datastore = fileDataStoreFactory.getDataStore[StoredCredential](datastoreName)
 
     val flow = new GoogleAuthorizationCodeFlow.Builder(TRANSPORT, FACTORY, clientSecrets, scopes.scopes.asJava)
