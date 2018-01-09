@@ -1,17 +1,17 @@
 package analytico
 
+import scala.collection.JavaConverters._
 import java.io.{ File, FileOutputStream, IOException }
 import java.time.{ DayOfWeek, LocalDate }
 
-import analytico.youtube.YTAuth
-import analytico.youtube.YTScope._
 import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
 import com.google.api.services.youtubeAnalytics.model.ResultTable
 import org.apache.poi.ss.usermodel.{ CellStyle, CreationHelper, HorizontalAlignment, Workbook }
 import org.apache.poi.xssf.usermodel.{ XSSFCellStyle, XSSFWorkbook }
 import org.threeten.extra.YearWeek
 
-import scala.collection.JavaConverters._
+import analytico.youtube.YTAuth
+import analytico.youtube.YTScope._
 
 object Main {
 

@@ -1,12 +1,12 @@
 package analytico
 package macros
 
-import analytico.youtube.apis.{ ApiParameter, ApplicableParameter }
-
 import scala.annotation.{ StaticAnnotation, compileTimeOnly }
 import scala.collection.mutable
 import scala.language.experimental.macros
 import scala.reflect.macros._
+
+import analytico.youtube.apis.{ ApiParameter, ApplicableParameter }
 
 object YTApiGenerator {
 

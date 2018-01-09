@@ -1,6 +1,7 @@
 package analytico
 package youtube
 
+import scala.collection.JavaConverters._
 import java.io.{ File, InputStreamReader }
 
 import com.google.api.client.auth.oauth2.StoredCredential
@@ -10,8 +11,6 @@ import com.google.api.client.googleapis.auth.oauth2.{ GoogleAuthorizationCodeFlo
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
-
-import scala.collection.JavaConverters._
 
 /**
   * Enthält die Methode zur Authentifizierung mit der YT-API, `authorize`.

@@ -1,16 +1,17 @@
 package analytico
 package youtube
 
-import analytico.youtube.YTScope._
-import analytico.youtube.apis._
 import com.google.api.client.auth.oauth2.{ Credential ⇒ OAuthCredential }
 import com.google.api.client.http.HttpTransport
 import com.google.api.client.json.JsonFactory
 import com.google.api.services.youtube.YouTube
 import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
 
+import analytico.youtube.YTScope._
+import analytico.youtube.apis._
+
 /**
-  * Stellt einen Zugriffschnittstelle zu den YouTube-APIs dar.
+  * Stellt eine Zugriffschnittstelle zu den YouTube-APIs dar.
   *
   * @tparam S der Scopes des Zugriffs.
   *

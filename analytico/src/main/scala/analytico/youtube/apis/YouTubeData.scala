@@ -2,10 +2,10 @@ package analytico
 package youtube
 package apis
 
+import scala.annotation.implicitNotFound
+
 import com.google.api.services.youtube.YouTube
 import com.google.api.services.youtube.model.ChannelListResponse
-
-import scala.annotation.implicitNotFound
 
 /**
   * Die typsicherere API zu YouTube Data.
@@ -29,16 +29,14 @@ class YouTubeData[S <: YTScope](apiAccess: YouTube) {
 
   /**
     * Ein Typ für eine unmögliche API-Realisierung.
+    *
     * @group not-yet-implemented
     */
   @implicitNotFound("This API is not implemented yet.")
   type Impossible <: Nothing
 
   //noinspection NotImplementedCode
-  private[this] def fail(implicit evidence$1: Impossible): Nothing = {
-    println(evidence$1)
-    ???
-  }
+  private[this] def fail[T](implicit evidence$1: Impossible): T = evidence$1
 
   /** @group part-implemented */
   def channels: ChannelView = ChannelView()

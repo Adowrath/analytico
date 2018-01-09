@@ -10,21 +10,30 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-feature",
     "-Xfuture",
-    "-Xlint",
+    "-Xlint:_",
     "-Yno-adapted-args",
     "-Yrangepos",
     "-Ywarn-adapted-args",
     "-Ywarn-dead-code",
-    "-Ywarn-extra-implicit",
     "-Ywarn-inaccessible",
     "-Ywarn-infer-any",
     "-Ywarn-nullary-override",
     "-Ywarn-nullary-unit",
     "-Ywarn-numeric-widen",
-    "-Ywarn-unused:_",
     "-Ywarn-unused-import",
     "-Ywarn-value-discard"
   ),
+  scalacOptions ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      /** Auf Scala 11 und darunter ist der Flag extra-implicit nicht vorhanden. */
+      case Some((2, major)) if major >= 12 ⇒
+        Seq(
+          "-Ywarn-extra-implicit",
+          "-Ywarn-unused:_,-implicits")
+      case _ ⇒
+        Seq("-Ywarn-unused")
+    }
+  },
   scalacOptions in Compile in doc ++= Seq(
     "-groups",
     "-implicits",
@@ -32,6 +41,7 @@ lazy val commonSettings = Seq(
     "-encoding", "utf8",
     "-help",
     "-author",
+    "-diagrams",
     "-doc-title", description.value,
     "-doc-version", version.value,
     "-sourcepath", (baseDirectory.value / "src" / "main" / "scala").getAbsolutePath
@@ -55,8 +65,8 @@ lazy val commonSettings = Seq(
     * Damit IntelliJ einfacher eigene Rebuilds machen kann.
     * https://github.com/JetBrains/sbt-ide-settings/tree/750b993453fb3d1f31f371968d06e3fc792870a1#using-the-settings-without-plugin
     */
-  SettingKey[Option[File]]("ide-output-directory") in Compile := Option(baseDirectory.value / "target" / "idea" / "classes"),
-  SettingKey[Option[File]]("ide-output-directory") in Test := Option(baseDirectory.value / "target" / "idea" / "test-classes")
+  SettingKey[Option[File]]("ide-output-directory") in Compile := Some(baseDirectory.value / "target" / "idea" / "classes"),
+  SettingKey[Option[File]]("ide-output-directory") in Test := Some(baseDirectory.value / "target" / "idea" / "test-classes")
 )
 
 lazy val paradiseDependency = "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
