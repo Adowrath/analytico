@@ -34,7 +34,7 @@ lazy val commonSettings = Seq(
         Seq("-Ywarn-unused")
     }
   },
-  scalacOptions in Compile in doc ++= Seq(
+  Compile / doc / scalacOptions ++= Seq(
     "-groups",
     "-implicits",
     "-deprecation",
@@ -46,7 +46,7 @@ lazy val commonSettings = Seq(
     "-doc-version", version.value,
     "-sourcepath", (baseDirectory.value / "src" / "main" / "scala").getAbsolutePath
   ),
-  autoAPIMappings in Compile in doc := true,
+  Compile / doc / autoAPIMappings := true,
   publishMavenStyle := true,
   libraryDependencies := rootDependencies,
   publishArtifact := false,
@@ -65,8 +65,8 @@ lazy val commonSettings = Seq(
     * Damit IntelliJ einfacher eigene Rebuilds machen kann.
     * https://github.com/JetBrains/sbt-ide-settings/tree/750b993453fb3d1f31f371968d06e3fc792870a1#using-the-settings-without-plugin
     */
-  SettingKey[Option[File]]("ide-output-directory") in Compile := Some(baseDirectory.value / "target" / "idea" / "classes"),
-  SettingKey[Option[File]]("ide-output-directory") in Test := Some(baseDirectory.value / "target" / "idea" / "test-classes")
+  Compile / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" /      "classes"),
+  Test    / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" / "test-classes")
 )
 
 lazy val paradiseDependency = "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
@@ -100,9 +100,7 @@ lazy val root = (project in file("."))
   .settings(
     commonSettings,
     name := "analytico-root",
-    run in Compile := {
-      run in Compile in analytico
-    }.evaluated
+    Compile / run := (analytico / Compile / run).evaluated
   )
   .aggregate(analytico, macros)
 
