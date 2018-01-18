@@ -27,19 +27,21 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
 
   /* Properties */
   def currentTab: Tab = tabPane.selectionModel().getSelectedItem
+
   def nodesToDisable: Seq[Node] =
     buttonSpace.children.map(n ⇒ n: Node).dropRight(1) :+ tabPane
 
-
-  def disable(waiting: Boolean): Unit = {
-    nodesToDisable.foreach(_.disable = waiting)
-  }
-
-  def stopWaiting(): Unit = {
-    disable(waiting = false)
-    currentCancelable().foreach(_.cancel())
-  }
-
+  /* Utility methods */
+  /**
+    * Constructs a new Button that, when pressed, will run a given
+    * authorization scheme while blocking other controls in the UI.
+    *
+    * @param buttonName the text to display on the button.
+    * @param tab        the tab that will be filled with the results of the authorization.
+    * @param handler    the authorization function.
+    *
+    * @return returns the new button
+    */
   def apiButton(buttonName: String, tab: Tab)(handler: String ⇒ (Cancelable, Future[StatPane])): Button = button(buttonName) {
     disable(waiting = true)
     val (cancelable, pane) = handler(tab.text())
@@ -55,7 +57,27 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     }
   }
 
-  def getApiButtons(tab: Tab): Seq[Button] = Seq(
+  /* Actions */
+  def newAccountPane(name: String): Unit = {
+    panes(name) = NoStatsPane
+
+    val tab = new Tab
+    tab.text = name
+    tabPane += tab
+    tabPane.selectionModel().select(tab)
+  }
+
+  def disable(waiting: Boolean): Unit = {
+    nodesToDisable.foreach(_.disable = waiting)
+  }
+
+  def stopWaiting(): Unit = {
+    disable(waiting = false)
+    currentCancelable().foreach(_.cancel())
+  }
+
+  /* UI relevant. */
+  def uninitializedButtons(tab: Tab): Seq[Button] = Seq(
     apiButton("Mit YouTube anmelden", tab) {
       YoutubeStatPane.apply
     }
@@ -70,6 +92,19 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
       stopWaiting()
     }
   )
+
+  /* Listeners */
+  tabPane.selectionModel().selectedItemProperty().onChange { (_, _, newTab) ⇒
+    panes.get(newTab.getText) match {
+      case None | Some(NoStatsPane) ⇒
+        buttonSpace.children = uninitializedButtons(newTab)
+
+      case Some(pane) ⇒
+        buttonSpace.children = Nil
+        pane.initialize(newTab, Some(buttonSpace))
+        buttonSpace.children.addAll(commonButtons(newTab).map(_.delegate).asJava)
+    }
+  }
 
   def renameTab(tab: Tab): Unit = {
     val oldName = tab.text()
@@ -136,27 +171,6 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
       for(title <- Option(dialog.result())) newAccountPane(title.trim)
     }
     dialog.show()
-  }
-
-  def newAccountPane(name: String): Unit = {
-    panes(name) = NoStatsPane
-
-    val tab = new Tab
-    tab.text = name
-    tabPane += tab
-    tabPane.selectionModel().select(tab)
-  }
-
-  tabPane.selectionModel().selectedItemProperty().onChange { (_, _, newTab) ⇒
-    panes.get(newTab.getText) match {
-      case None | Some(NoStatsPane) ⇒
-        buttonSpace.children = getApiButtons(newTab)
-
-      case Some(pane) ⇒
-        buttonSpace.children = Nil
-        pane.initialize(newTab, Some(buttonSpace))
-        buttonSpace.children.addAll(commonButtons(newTab).map(_.delegate).asJava)
-    }
   }
 
   def clicked(): Unit = {

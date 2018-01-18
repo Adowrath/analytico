@@ -50,12 +50,12 @@ object StatPane {
 
     val liveStats: BooleanProperty = BooleanProperty(true)
     val videoStats: BooleanProperty = BooleanProperty(false)
-    val combined: BooleanProperty = BooleanProperty(false)
+    val combinedStats: BooleanProperty = BooleanProperty(false)
     val name = StringProperty(displayName)
 
     liveStats onInvalidate invalidate
     videoStats onInvalidate invalidate
-    combined onInvalidate invalidate
+    combinedStats onInvalidate invalidate
 
     def invalidate(): Unit = {
       valid() = false
@@ -103,15 +103,20 @@ object StatPane {
             _.viewType match {
               case Live ⇒ liveStats()
               case Video ⇒ videoStats()
-              case Combined ⇒ combined()
+              case Combined ⇒ combinedStats()
             }
           }
         })
         tabView.editable = false
+
+        /** Falls 2 oder mehr aktiv sind */
+        if((liveStats() && (videoStats() || combinedStats())) || videoStats() && combinedStats()) {
+          tabView.columns.add(
+            column("Art") { _.viewType }
+          )
+        }
         tabView.columns.addAll(
-          column("KW") { vc ⇒
-            s"${vc.yearWeek.getWeek} (${vc.viewType})"
-          },
+          column("KW") { _.yearWeek.getWeek },
           column("Aufrufe") { _.views.toBigInt },
           column("Durschnittliche Wiedergabedauer") { vc ⇒ secondsToString(vc.averageDuration) },
           column("Total Zuschauerzeit") { vc ⇒ secondsToString(vc.estimatedMinutes * 60) }
@@ -123,17 +128,14 @@ object StatPane {
       valid() = true
     }
 
-    def settings(tab: Tab): Seq[Node] = Seq({
-      val cb = new CheckBox("Live-Stats einbeziehen?")
-      cb.selected <==> liveStats
-      cb
-    }, {
-      val cb = new CheckBox("On Demand einbeziehen?")
-      cb.selected <==> videoStats
-      cb
-    }, button("Aktualisieren", valid) {
-      initialize(tab, None)
-    })
+    def settings(tab: Tab): Seq[Node] = Seq(
+      checkBox("Live-Stats einbeziehen?", checked = liveStats)(()),
+      checkBox("On Demand einbeziehen?", checked = videoStats)(()),
+      checkBox("Kombiniert einbeziehen?", checked = combinedStats)(()),
+      button("Aktualisieren", disabled = valid) {
+        initialize(tab, None)
+      }
+    )
   }
 
   object YoutubeStatPane {
@@ -162,4 +164,5 @@ object StatPane {
   object NoStatsPane extends StatPane {
     override def initialize(tab: Tab, pane: Option[Pane]): Unit = ()
   }
+
 }

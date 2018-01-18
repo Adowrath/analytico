@@ -254,33 +254,24 @@ object Main extends JFXApp {
 
     /** Summiert die View-Zahlen und Minutenwerte über eine Woche hinweg. `AnyRef` da `ResultTable`. */
     private[this]
-    def collectStats(l: Seq[Seq[AnyRef]]): Stats =
-      l.foldLeft(emptyStats) {
+    def collectStats(stats: Seq[Seq[AnyRef]]): Stats =
+      (emptyStats /: stats) {
         case ((views, minutes), row) ⇒
           (views + BigDecimal.exact(row(2).asInstanceOf[java.math.BigDecimal])) →
             (minutes + BigDecimal.exact(row(3).asInstanceOf[java.math.BigDecimal]))
       }
 
     /** Was für eine Art Statistik ist es? */
-    sealed abstract class ViewType(val sigil: Char) {
-      override def toString: String
-    }
+    sealed abstract class ViewType(override val toString: String)
 
     /** Zuschauerstatistiken für die Livestreams. */
-    case object Live extends ViewType('L') {
-      override def toString: String = "ViewType.Live"
-    }
+    case object Live extends ViewType("Live")
 
     /** Zuschauerstatistiken für die normalen Videos. */
-    case object Video extends ViewType('V') {
-      override def toString: String = "ViewType.Video"
-    }
+    case object Video extends ViewType("Video")
 
     /** Die gesamten Zuschauerstatistiken, Live und On Demand kombiniert. */
-    case object Combined extends ViewType('C') {
-      override def toString: String = "ViewType.Combined"
-    }
-
+    case object Combined extends ViewType("Kombiniert")
   }
 
 }
