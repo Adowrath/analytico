@@ -5,9 +5,9 @@ package apis
 /**
   * Das Channel-Objekt in der YouTube Data API.
   *
-  * Eine eigentliche Lösung über ein Makro ist unten zu sehen.
+  * In der Source-Datei ist unterhalb die Implementation per Makro zu sehen.
   *
-  * @see [[https://developers.google.com/youtube/v3/docs/channels Google Docs]]
+  * @see [[https://developers.google.com/youtube/v3/docs/channels Google Dokumentation]]
   */
 object ChannelRepresentation {
   val kind = new ApiParameter("kind", isPart = false)

@@ -13,26 +13,39 @@ import analytico.youtube.apis._
 /**
   * Stellt eine Zugriffschnittstelle zu den YouTube-APIs dar.
   *
-  * @tparam S der Scopes des Zugriffs.
-  *
   * @since 28.11.2017
   * @version v1.0
   */
-class YTAccess[S <: YTScope](val credential: OAuthCredential, val jsonFactory: JsonFactory, val httpTransport: HttpTransport)
-  extends AnalyticsAccess
-    with YoutubeDataAccess {
-  override type Scopes = S
+class YTAccess(val credential: OAuthCredential, val jsonFactory: JsonFactory, val httpTransport: HttpTransport)
+  extends GenericYTAccess
+    with AnalyticsAccess
+    with YoutubeDataAccess
+
+object YTAccess {
+  type Apply[S <: YTScope] = YTAccess {type Scopes = S}
+
+  def apply[Scopes <: YTScope](credential: OAuthCredential,
+                               jsonFactory: JsonFactory,
+                               httpTransport: HttpTransport)
+                              (implicit scopes: Scopes): Apply[scopes.Result] = {
+    new YTAccess(
+      credential = credential,
+      jsonFactory = jsonFactory,
+      httpTransport = httpTransport)
+      .asInstanceOf[Apply[scopes.Result]]
+  }
 }
 
 /**
   * Ein Trait, der die Youtube Analytics-API typ- und scopesicher angibt.
-  * Vorübergehend nur ein Wrapper zum [[YouTubeAnalytics.Builder Builder]] der Google-Library.
+  * Vorübergehend nur ein Wrapper zum [[com.google.api.services.youtubeAnalytics.YouTubeAnalytics.Builder Builder]] der Google-Library.
   *
   * @since 29.11.2017
   * @version v1.0
   */
-trait AnalyticsAccess extends GenericYTAccess {
-  def buildAnalytics(applicationTitle: String)(implicit evidence: Requires[AnalyticsReadOnly]): YouTubeAnalytics =
+trait AnalyticsAccess {
+  self: GenericYTAccess ⇒
+  def buildAnalytics(applicationTitle: String)(implicit evidence: Req[AnalyticsReadOnly]): YouTubeAnalytics =
     new YouTubeAnalytics.Builder(httpTransport, jsonFactory, credential)
       .setApplicationName(applicationTitle)
       .build()
@@ -40,17 +53,18 @@ trait AnalyticsAccess extends GenericYTAccess {
 
 
 /**
-  * Ein Trait, der die Youtube Analytics-API typ- und scopesicher angibt.
-  * Vorübergehend nur ein Wrapper zum [[YouTubeAnalytics.Builder Builder]] der Google-Library.
+  * Ein Trait, der die Youtube Data-API typ- und scopesicher angibt.
+  * Vorübergehend nur ein Wrapper zum [[com.google.api.services.youtube.YouTube.Builder Builder]] der Google-Library.
   *
   * @since 29.11.2017
   * @version v1.0
   */
-trait YoutubeDataAccess extends GenericYTAccess {
-  def youtubeData(applicationTitle: String)(implicit evidence: Requires[YoutubeReadOnly]): YouTubeData[Scopes] =
+trait YoutubeDataAccess {
+  self: GenericYTAccess ⇒
+  def youtubeData(applicationTitle: String)(implicit evidence: Req[YoutubeReadOnly]): YouTubeData[Scopes] =
     new YouTubeData[Scopes](buildDataAPI(applicationTitle))
 
-  def buildDataAPI(applicationTitle: String)(implicit evidence: Requires[YoutubeReadOnly]): YouTube =
+  def buildDataAPI(applicationTitle: String)(implicit evidence: Req[YoutubeReadOnly]): YouTube =
     new YouTube.Builder(httpTransport, jsonFactory, credential)
       .setApplicationName(applicationTitle)
       .build()
@@ -64,16 +78,15 @@ trait YoutubeDataAccess extends GenericYTAccess {
   */
 trait GenericYTAccess {
   /**
-    * Die vorhandenen Scopes in einer Instanz. Am besten wird ein Typ-Parameter hier zugewiesen.
-    */
-  type Scopes <: YTScope
-
-  /**
     * Ein wenig Syntax Sugar für einen erforderlichen Scope.
     *
     * @tparam RequiredScope der erforderliche Scope.
     */
-  type Requires[RequiredScope <: YTScope] = Scopes <:< RequiredScope
+  type Req[RequiredScope <: YTScope] = Scopes <:< RequiredScope
+  /**
+    * Die vorhandenen Scopes in einer Instanz.
+    */
+  protected[this] type Scopes <: YTScope
 
   /**
     * Das Credential

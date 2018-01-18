@@ -62,7 +62,7 @@ class ApplicableParameter[Supply <: scala.Singleton](name: String,
     *   parent                    .repr == "parent"
     * }}}
     */
-  override def repr: String = innerParameters match {
+  override def repr: String = innerParameters.toList match {
     case Nil ⇒ super.repr
     case single :: Nil ⇒ s"${super.repr}/${single.repr}"
     case _ ⇒ innerParameters.map(_.repr).mkString(s"${super.repr}(", ", ", ")")

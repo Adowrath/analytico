@@ -9,10 +9,20 @@ lazy val commonSettings = Seq(
     "-unchecked",
     "-deprecation",
     "-feature",
+    "-explaintypes",
+
     "-Xfuture",
+
+    "-Xlog-free-terms",
+    "-Xlog-free-types",
+    //"-Xlog-implicits",
+
+    "-Xverify",
     "-Xlint:_",
+
     "-Yno-adapted-args",
     "-Yrangepos",
+
     "-Ywarn-adapted-args",
     "-Ywarn-dead-code",
     "-Ywarn-inaccessible",
@@ -29,7 +39,9 @@ lazy val commonSettings = Seq(
       case Some((2, major)) if major >= 12 ⇒
         Seq(
           "-Ywarn-extra-implicit",
-          "-Ywarn-unused:_,-implicits")
+          "-Ywarn-unused:_,-implicits,-patvars",
+          "-opt:l:method",
+          "-opt-warnings:_")
       case _ ⇒
         Seq("-Ywarn-unused")
     }
@@ -42,13 +54,14 @@ lazy val commonSettings = Seq(
     "-help",
     "-author",
     "-diagrams",
+    "-diagrams-max-implicits", "5",
     "-doc-title", description.value,
     "-doc-version", version.value,
     "-sourcepath", (baseDirectory.value / "src" / "main" / "scala").getAbsolutePath
   ),
   Compile / doc / autoAPIMappings := true,
   publishMavenStyle := true,
-  libraryDependencies := rootDependencies,
+  libraryDependencies ++= rootDependencies,
   publishArtifact := false,
 
   /**
@@ -59,14 +72,30 @@ lazy val commonSettings = Seq(
   /**
     * Cross-Building? Warum nicht!
     */
-  crossScalaVersions := Seq("2.11.12", "2.12.4", "2.13.0-M2"),
+  crossScalaVersions := Seq("2.11.12", "2.12.4"/*, "2.13.0-M2"*/),
 
   /**
     * Damit IntelliJ einfacher eigene Rebuilds machen kann.
     * https://github.com/JetBrains/sbt-ide-settings/tree/750b993453fb3d1f31f371968d06e3fc792870a1#using-the-settings-without-plugin
     */
   Compile / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" /      "classes"),
-  Test    / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" / "test-classes")
+  Test    / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" / "test-classes"),
+  fork := true,
+  wartremoverWarnings ++= {
+    import Wart._
+    Warts.allBut(
+      AsInstanceOf,
+      DefaultArguments,
+      ImplicitParameter,
+      MutableDataStructures,
+      NonUnitStatements,
+      Overloading,
+      Option2Iterable,
+      Recursion,
+      TraversableOps,
+      Var
+    )
+  }
 )
 
 lazy val paradiseDependency = "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
@@ -75,7 +104,19 @@ lazy val miscDependencies = Seq(
   /**
     * Für bessere Datumsmanipulation.
     */
-  "org.threeten" % "threeten-extra" % "1.2"
+  "org.threeten" % "threeten-extra" % "1.2",
+
+  /**
+    * ScalaFX!
+    *
+    * @see [[http://www.scalafx.org/ ScalaFX]]
+    */
+  "org.scalafx" %% "scalafx" % "8.0.144-R12",
+
+  /**
+    * FXML-Schnittstelle für Scala.
+    */
+  "org.scalafx" %% "scalafxml-core-sfx8" % "0.4"
 )
 
 lazy val excelDependencies = Seq(

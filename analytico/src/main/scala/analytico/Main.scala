@@ -1,53 +1,65 @@
 package analytico
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scalafx.Includes._
+import scalafx.application.{ JFXApp, Platform }
+import scalafx.scene.Scene
+import scalafx.scene.image.Image
+import scalafxml.core.{ FXMLView, NoDependencyResolver }
 import java.io.{ File, FileOutputStream, IOException }
 import java.time.{ DayOfWeek, LocalDate }
 
 import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
 import com.google.api.services.youtubeAnalytics.model.ResultTable
-import org.apache.poi.ss.usermodel.{ CellStyle, CreationHelper, HorizontalAlignment, Workbook }
+import org.apache.poi.ss.usermodel.{ CellStyle, HorizontalAlignment, Workbook }
 import org.apache.poi.xssf.usermodel.{ XSSFCellStyle, XSSFWorkbook }
 import org.threeten.extra.YearWeek
 
 import analytico.youtube.YTAuth
 import analytico.youtube.YTScope._
 
-object Main {
+object Main extends JFXApp {
 
-  def main(args: Array[String]): Unit = {
-    example(entireYear(2017) match { case (a, b) ⇒ (a.toString, b.toString) })
+  stage = new JFXApp.PrimaryStage() {
+    title = "Test window"
+    icons += new Image(getClass.getResourceAsStream("/icon.png"))
+    scene = new Scene(FXMLView(getClass.getResource("/main.fxml"), NoDependencyResolver))
+    sizeToScene()
+    Platform.runLater {
+      minHeight = height()
+      minWidth = width()
+    }
+    //TODO SAVE MECHANISM
+    // onCloseRequest = _.consume()
   }
 
   /**
     * Kleiner Test der APIs.
     */
   def example(dateRange: (String, String)): Unit = {
-    val api = YTAuth.authorize[YoutubeReadOnly && AnalyticsReadOnly]("analyticsAndYoutube")
+    val (_, api) = YTAuth.authorize[YoutubeReadOnly && AnalyticsReadOnly]("analyticsAndYoutube")
 
-    val analytics = api buildAnalytics "test"
-    val youtube = api youtubeData "test"
+    for(api ← api) {
+      val analytics = api buildAnalytics "test"
+      val youtube = api youtubeData "test"
 
-    val channels = youtube.channels.mine.list(_.items(_.id, _.snippet(_.title, _.thumbnails(_.high))))
+      for(channels <- youtube.channels.mine.list(_.items(_.id, _.snippet(_.title, _.thumbnails(_.high))))) {
+        val channelId = channels.getItems.get(0).getId
+        val res = executeViewsOverTimeQuery(dateRange, analytics, channelId)
+        val counts = ViewCount.fromResults(res)
 
-    val listOfChannels = channels.getItems
-    // The user's default channel is the first item in the list.
-    val defaultChannel = listOfChannels.get(0)
-
-    val channelId = defaultChannel.getId
-
-    val res = executeViewsOverTimeQuery(dateRange, analytics, channelId)
-    val counts = ViewCount.fromResults(res)
-
-    generateSheets("StarTube Live", "StarTube Video", "Total -- YT", counts)
+        generateSheets("StarTube Live", "StarTube Video", "Total -- YT", counts)
+      }
+    }
   }
 
   /** Ein kleiner Wrapper für eine lesbarere Syntax. Sollte 0 Overhead ausmachen! */
   implicit class WorkbookDecorator(val wb: Workbook) extends AnyVal {
     @inline
-    def styleWithFormat(format: String)(implicit createHelper: CreationHelper = wb.getCreationHelper): CellStyle = {
+    def styleWithFormat(format: String): CellStyle = {
       val style = wb.createCellStyle
-      style.setDataFormat(createHelper.createDataFormat getFormat format)
+      style.setDataFormat(wb.getCreationHelper.createDataFormat getFormat format)
       style
     }
   }
@@ -57,7 +69,6 @@ object Main {
     val columnHeaders = List("KW" → 5, "Aufrufe" → 10, "Durschnittliche Wiedergabedauer" → 10, "Total Zuschauerzeit" → 10).zipWithIndex
 
     val wb = new XSSFWorkbook()
-    implicit val createHelper: CreationHelper = wb.getCreationHelper
 
     val liveSheet = wb.createSheet(liveName)
     val onDemandSheet = wb.createSheet(onDemandName)
@@ -98,7 +109,7 @@ object Main {
     } {
       val sheet = viewType match {
         case ViewCount.Live ⇒ liveSheet
-        case ViewCount.OnDemand ⇒ onDemandSheet
+        case ViewCount.Video ⇒ onDemandSheet
         case ViewCount.Combined ⇒ completeSheet
       }
       val row = sheet createRow (idx + 1)
@@ -162,7 +173,7 @@ object Main {
     *
     * @return ein Tuple aus Anfangs- und Enddatum.
     */
-  def entireYear(year: Int): (LocalDate, LocalDate) = {
+  def datesOfYear(year: Int): (LocalDate, LocalDate) = {
     val firstWeek = YearWeek.of(year, 1)
     // Falls das Jahr 53 Wochen hat, nehmen wir die 53te Woche.
     val lastWeek = YearWeek.of(year, if(firstWeek.is53WeekYear()) 53 else 52)
@@ -180,7 +191,7 @@ object Main {
     * @param views            die View-Zahlen.
     * @param estimatedMinutes die von YT geschätzte Zahl der geschauten Minuten.
     */
-  case class ViewCount(yearWeek: YearWeek, viewType: ViewCount.ViewType, views: BigDecimal, estimatedMinutes: BigDecimal) {
+  final case class ViewCount(yearWeek: YearWeek, viewType: ViewCount.ViewType, views: BigDecimal, estimatedMinutes: BigDecimal) {
     override def toString: String =
       s"ViewCount(yearWeek: $yearWeek, viewType: $viewType, views: $views, estimatedMinutes: $estimatedMinutes, avg: ${averageDuration}s)"
 
@@ -211,7 +222,7 @@ object Main {
       * @return eine Liste aller ViewCounts.
       */
     def fromResults(results: ResultTable): Seq[ViewCount] = {
-      require(results.getColumnHeaders.asScala.map(_.getName) == tableStructure,
+      require(results.getColumnHeaders.asScala.map(_.getName).toList === tableStructure,
         s"Die ResultTable muss die richtige Struktur haben: $tableStructure.\n" +
           s"Es war jedoch: ${results.getColumnHeaders.asScala.map(_.getName)}")
 
@@ -219,14 +230,14 @@ object Main {
         val weeklyStats = list.asScala.map(_.asScala) groupBy getYearWeek
 
         weeklyStats.flatMap { case (weekInYear, stats) ⇒
-          stats.partition(_ (1) == "LIVE") match {
+          stats.partition(_ (1) === "LIVE") match {
             case (liveStats, onDemandStats) ⇒
               collectStats(liveStats) → collectStats(onDemandStats) match {
                 case ((liveViews, liveMinutes), (onDemandViews, onDemandMinutes)) ⇒
                   // Alle 3 Arten der Views kombinieren.
                   Seq(
                     ViewCount(weekInYear, Live, liveViews, liveMinutes),
-                    ViewCount(weekInYear, OnDemand, onDemandViews, onDemandMinutes),
+                    ViewCount(weekInYear, Video, onDemandViews, onDemandMinutes),
                     ViewCount(weekInYear, Combined, liveViews + onDemandViews, liveMinutes + onDemandMinutes)
                   )
               }
@@ -237,6 +248,7 @@ object Main {
     }
 
     /** Parst das Jahr und die Woche aus der Liste heraus. */
+    @SuppressWarnings(Array("org.wartremover.warts.ToString"))
     private[this]
     def getYearWeek(l: Seq[AnyRef]): YearWeek = YearWeek.from(LocalDate.parse(l.head.toString))
 
@@ -250,22 +262,22 @@ object Main {
       }
 
     /** Was für eine Art Statistik ist es? */
-    sealed trait ViewType {
+    sealed abstract class ViewType(val sigil: Char) {
       override def toString: String
     }
 
     /** Zuschauerstatistiken für die Livestreams. */
-    object Live extends ViewType {
+    case object Live extends ViewType('L') {
       override def toString: String = "ViewType.Live"
     }
 
     /** Zuschauerstatistiken für die normalen Videos. */
-    object OnDemand extends ViewType {
-      override def toString: String = "ViewType.OnDemand"
+    case object Video extends ViewType('V') {
+      override def toString: String = "ViewType.Video"
     }
 
     /** Die gesamten Zuschauerstatistiken, Live und On Demand kombiniert. */
-    object Combined extends ViewType {
+    case object Combined extends ViewType('C') {
       override def toString: String = "ViewType.Combined"
     }
 

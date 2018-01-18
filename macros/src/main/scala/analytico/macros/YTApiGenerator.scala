@@ -38,13 +38,13 @@ object YTApiGenerator {
 
     /** Implementierungs-Detail. */
     //noinspection NotImplementedCode
-    override protected[YTApiGenerator] def impl(ignored: Any = null): Nothing = ???
+    override protected[YTApiGenerator] def impl(ignored: Any): Nothing = ???
 
     /** Für eine Property, die kein Part ist. */
-    def unary_- : this.type = impl()
+    def unary_- : this.type = impl(())
 
     /** Für eine Property, die auch ein Part ist. */
-    def unary_+ : this.type = impl()
+    def unary_+ : this.type = impl(())
   }
 
   /**
@@ -75,6 +75,10 @@ object YTApiGenerator {
   *
   * @version v0.2
   */
+@SuppressWarnings(Array(
+  "org.wartremover.warts.Any",
+  "org.wartremover.warts.Nothing",
+  "org.wartremover.warts.PublicInference"))
 class YTApiGenerator[C <: whitebox.Context](val c: C) {
 
   import c.universe._
@@ -82,7 +86,7 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
   /** Das Klassensymbol eines einfachen Parameters. */
   lazy val simpleParam: ClassSymbol = symbolOf[ApiParameter].asClass
   /** Das Klassensymbol eines Parameters mit Kindern. */
-  lazy val applicParam: ClassSymbol = symbolOf[ApplicableParameter[_]].asClass
+  lazy val applicParam: ClassSymbol = symbolOf[ApplicableParameter[Singleton]].asClass
 
   /**
     * Bricht die Ausführung des Makros mit einer Fehlermeldung ab.
@@ -91,14 +95,14 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
     *
     * @return Nichts.
     */
-  def bail(message: String, pos: Position = c.enclosingPosition): Nothing = c.abort(pos, message)
+  def bail(message: String, pos: Position): Nothing = c.abort(pos, message)
 
   /**
     * Entscheidet anhand des Methodennamens, ob die Eigenschaft auch ein Part der Anfrage ist.
     *
     * Die Methode `unary_-` stellt ein `-'symbol` dar, eine einfache Eigenschaft.
     *
-    * Die Methode `unary_+`  stellt ein `+'symbol` dar, eine Eigenschaft welche auch ein Part ist.
+    * Die Methode `unary_+` stellt ein `+'symbol` dar, eine Eigenschaft welche auch ein Part ist.
     */
   def isPart(name: TermName): Option[Boolean] = name.decodedName match {
     case TermName("unary_-") ⇒ Some(false)
@@ -116,10 +120,10 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
   def splitTree(tree: Tree): Option[Property] = {
 
     val (name, method, inner) = tree match {
-      case q"scala.Symbol(${name: Literal}).${method: TermName}" ⇒
-        (name, method, Nil)
-      case q"scala.Symbol(${name: Literal})({..${inners: Seq[Tree]}}).${method: TermName}" ⇒
-        (name, method, inners map splitTree)
+      case q"scala.Symbol(${symbolName: String}).${methodName: TermName}" ⇒
+        (symbolName, methodName, Nil)
+      case q"scala.Symbol(${symbolName: String})({..${inners: Seq[Tree]}}).${methodName: TermName}" ⇒
+        (symbolName, methodName, inners map splitTree)
     }
 
     isPart(method) match {
@@ -128,7 +132,7 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
           "Consider using either `unary_-` or `unary_+`.")
         None
       case Some(isPart) ⇒
-        Some(Property(tree.pos, isPart = isPart, name.value.value.toString, inner: _*))
+        Some(Property(tree.pos, isPart = isPart, name, inner: _*))
     }
   }
 
@@ -167,7 +171,7 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
               q"val $term = new $applicParam($name, $objectName, isPart = $isPart)",
               q"""
                object $objectName {
-                 ..$innerDefinitions
+                 ..${innerDefinitions.toList}
                }"""
             )
         }
@@ -242,9 +246,9 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
 
         println(showCode(result))
 
-        c.Expr(result)
+        c.Expr[Any](result)
       case _ =>
-        bail("You must annotate an object definition with a non-empty body.")
+        bail("You must annotate an object definition with a non-empty body.", c.enclosingPosition)
     }
   }
 

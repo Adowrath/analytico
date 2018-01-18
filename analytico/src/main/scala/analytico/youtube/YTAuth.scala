@@ -2,7 +2,10 @@ package analytico
 package youtube
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import java.io.{ File, InputStreamReader }
+import java.nio.file.Files
 
 import com.google.api.client.auth.oauth2.StoredCredential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
@@ -48,7 +51,8 @@ object YTAuth {
     * @since 28.11.2017
     * @version 1.0
     */
-  def authorize[Scopes <: YTScope](datastoreName: String, reauthorize: Boolean = false)(implicit scopes: Scopes): YTAccess[scopes.Result] = {
+  def authorize[Scopes <: YTScope](datastoreName: String, reauthorize: Boolean = false)
+                                  (implicit scopes: Scopes): (LocalServerReceiver, Future[YTAccess.Apply[scopes.Result]]) = {
     val clientSecretReader = new InputStreamReader(getClass.getResourceAsStream("/client_secrets.json"))
     val clientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecretReader)
 
@@ -62,7 +66,7 @@ object YTAuth {
     val credentialsFile = new File(userHome + "/" + credentialsDir)
     // Falls eine Re-Authorisierung gewünscht ist.
     if(reauthorize)
-      java.nio.file.Files.delete(credentialsFile.toPath.resolve(datastoreName))
+      Files.delete(credentialsFile.toPath.resolve(datastoreName))
 
     // This creates the credentials datastore at ~/.oauth-credentials/${datastoreName}
     val fileDataStoreFactory = new FileDataStoreFactory(credentialsFile)
@@ -72,12 +76,13 @@ object YTAuth {
       .setCredentialDataStore(datastore)
       .build()
 
-    // Build the local server and bind it to port 8080
+    // Build the local server and bind it to a random port
     val localReceiver = new LocalServerReceiver.Builder().setPort(-1).build
     // Authorize.
-    new YTAccess[scopes.Result](
-      credential = new AuthorizationCodeInstalledApp(flow, localReceiver).authorize("user"),
-      jsonFactory = jsonFactory,
-      httpTransport = httpTransport)
+    (localReceiver,
+      Future(YTAccess(
+        credential = new AuthorizationCodeInstalledApp(flow, localReceiver).authorize("user"),
+        jsonFactory = jsonFactory,
+        httpTransport = httpTransport)(scopes)))
   }
 }

@@ -3,9 +3,14 @@ package youtube
 package apis
 
 import scala.annotation.implicitNotFound
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 import com.google.api.services.youtube.YouTube
 import com.google.api.services.youtube.model.ChannelListResponse
+
+import analytico.typelevel.Bool
+import analytico.typelevel.Bool._
 
 /**
   * Die typsicherere API zu YouTube Data.
@@ -25,6 +30,7 @@ import com.google.api.services.youtube.model.ChannelListResponse
   * @groupdesc not-yet-implemented Die API-Interfaces hier wurden noch nicht implementiert.
   * @groupprio not-yet-implemented 30
   */
+@SuppressWarnings(Array("org.wartremover.warts.Nothing"))
 class YouTubeData[S <: YTScope](apiAccess: YouTube) {
 
   /**
@@ -35,37 +41,59 @@ class YouTubeData[S <: YTScope](apiAccess: YouTube) {
   @implicitNotFound("This API is not implemented yet.")
   type Impossible <: Nothing
 
-  //noinspection NotImplementedCode
   private[this] def fail[T](implicit evidence$1: Impossible): T = evidence$1
 
   /** @group part-implemented */
-  def channels: ChannelView = ChannelView()
+  def channels: ChannelView[False] = ChannelView[False]()
 
   /** @group part-implemented */
-  case class ChannelView(isMine: Boolean = false) {
-    def mine: ChannelView = copy(isMine = true)
+  case class ChannelView[FilterSpecified <: Bool](isMine: Option[Boolean] = None,
+                                                  isForId: Option[String] = None,
+                                                  isForUsername: Option[String] = None,
+                                                  isForCategory: Option[String] = None) {
+    type NoFilter = FilterSpecified =:= False
+    type Filtered = FilterSpecified =:= True
 
-    def list(listItems: (ChannelRepresentation.type ⇒ ApiParameter)*): ChannelListResponse = {
+    def mine(implicit notYetFiltered: NoFilter): ChannelView[True] =
+      copy(isMine = Some(true))
 
-      val parameters = listItems map {
+    def categoryId(categoryId: String)(implicit notYetFiltered: NoFilter): ChannelView[True] =
+      copy(isForCategory = Some(categoryId))
+
+    def forUsername(forUsername: String)(implicit notYetFiltered: NoFilter): ChannelView[True] =
+      copy(isForUsername = Some(forUsername))
+
+    def id(id: String)(implicit notYetFiltered: NoFilter): ChannelView[True] =
+      copy(isForId = Some(id))
+
+    // TODO: managedByMe 	boolean
+
+    def list(listItems: (ChannelRepresentation.type ⇒ ApiParameter)*)
+            (implicit evidence: Filtered): Future[ChannelListResponse] = Future {
+
+      val parameters = listItems.map {
         _ (ChannelRepresentation)
       }
-      val fields = parameters map {
+      val fields = parameters.map {
         _.repr
-      } mkString ", "
-      val parts = parameters flatMap {
+      }.mkString(", ")
+      val parts = parameters.flatMap {
         _.parts
-      } map {
+      }.map {
         _.repr
-      } mkString ","
+      }.mkString(",")
 
       val channelRequest = apiAccess.channels.list(parts)
-      channelRequest.setMine(isMine)
-      channelRequest.setFields(fields)
-      val channels = channelRequest.execute
+      isMine foreach (channelRequest setMine _)
+      isForId foreach channelRequest.setId
+      isForUsername foreach channelRequest.setForUsername
+      isForCategory foreach channelRequest.setCategoryId
 
-      channels
+      channelRequest.setFields(fields).execute()
     }
+
+
+    def update(implicit impossible: Impossible): Impossible = impossible
   }
 
   /* --------------------------- *\
