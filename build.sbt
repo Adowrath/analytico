@@ -116,7 +116,14 @@ lazy val miscDependencies = Seq(
   /**
     * FXML-Schnittstelle für Scala.
     */
-  "org.scalafx" %% "scalafxml-core-sfx8" % "0.4"
+  "org.scalafx" %% "scalafxml-core-sfx8" % "0.4",
+
+  /**
+    * Circe is a JSON-serializer.
+    */
+  "io.circe" %% "circe-core" % "0.9.0",
+  "io.circe" %% "circe-generic" % "0.9.0",
+  "io.circe" %% "circe-parser" % "0.9.0"
 )
 
 lazy val excelDependencies = Seq(

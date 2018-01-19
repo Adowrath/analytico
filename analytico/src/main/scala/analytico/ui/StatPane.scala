@@ -14,8 +14,9 @@ import java.time.LocalDate
 
 import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
 
-import analytico.Main.ViewCount._
-import analytico.Main.{ ViewCount, datesOfYear }
+import analytico.Main.datesOfYear
+import analytico.data.ViewCount
+import analytico.data.ViewCount._
 import analytico.youtube.YTAuth
 import analytico.youtube.YTScope._
 
