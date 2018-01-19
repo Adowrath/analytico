@@ -15,9 +15,9 @@ import org.apache.poi.ss.usermodel.{ CellStyle, HorizontalAlignment, Workbook }
 import org.apache.poi.xssf.usermodel.{ XSSFCellStyle, XSSFWorkbook }
 import org.threeten.extra.YearWeek
 
+import analytico.data.ViewCount
 import analytico.youtube.YTAuth
 import analytico.youtube.YTScope._
-import analytico.data.ViewCount
 
 object Main extends JFXApp {
 

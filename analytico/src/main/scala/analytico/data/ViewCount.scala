@@ -9,6 +9,7 @@ import org.threeten.extra.YearWeek
 
 import io.circe._
 import io.circe.generic.auto._
+import io.circe.generic.semiauto._
 import io.circe.syntax._
 
 /**
@@ -123,7 +124,6 @@ object ViewCount {
     }
   }
 
-  implicit val viewCountEncoder: Encoder[ViewCount] = implicitly[Encoder[ViewCount]]
-  implicit val viewCountDecoder: Decoder[ViewCount] = implicitly[Decoder[ViewCount]]
-
+  implicit val viewCountEncoder: Encoder[ViewCount] = deriveEncoder[ViewCount]
+  implicit val viewCountDecoder: Decoder[ViewCount] = deriveDecoder[ViewCount]
 }

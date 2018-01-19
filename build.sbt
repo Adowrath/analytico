@@ -11,41 +11,41 @@ lazy val commonSettings = Seq(
     "-feature",
     "-explaintypes",
 
-    "-Xfuture",
-
-    "-Xlog-free-terms",
-    "-Xlog-free-types",
-    //"-Xlog-implicits",
-
-    "-Xverify",
-    "-Xlint:_",
-
-    "-Yno-adapted-args",
-    "-Yrangepos",
-
-    "-Ywarn-adapted-args",
-    "-Ywarn-dead-code",
-    "-Ywarn-inaccessible",
-    "-Ywarn-infer-any",
-    "-Ywarn-nullary-override",
-    "-Ywarn-nullary-unit",
-    "-Ywarn-numeric-widen",
-    "-Ywarn-unused-import",
-    "-Ywarn-value-discard"
+//    "-Xfuture",
+//
+//    "-Xlog-free-terms",
+//    "-Xlog-free-types",
+//    //"-Xlog-implicits",
+//
+//    "-Xverify",
+//    "-Xlint:_",
+//
+//    "-Yno-adapted-args",
+//    "-Yrangepos",
+//
+//    "-Ywarn-adapted-args",
+//    "-Ywarn-dead-code",
+//    "-Ywarn-inaccessible",
+//    "-Ywarn-infer-any",
+//    "-Ywarn-nullary-override",
+//    "-Ywarn-nullary-unit",
+//    "-Ywarn-numeric-widen",
+//    "-Ywarn-unused-import",
+//    "-Ywarn-value-discard"
+//  ),
+//  scalacOptions ++= {
+//    CrossVersion.partialVersion(scalaVersion.value) match {
+//      /** Auf Scala 11 und darunter ist der Flag extra-implicit nicht vorhanden. */
+//      case Some((2, major)) if major >= 12 ⇒
+//        Seq(
+//          "-Ywarn-extra-implicit",
+//          "-Ywarn-unused:_,-implicits,-patvars",
+//          "-opt:l:method",
+//          "-opt-warnings:_")
+//      case _ ⇒
+//        Seq("-Ywarn-unused")
+//    }
   ),
-  scalacOptions ++= {
-    CrossVersion.partialVersion(scalaVersion.value) match {
-      /** Auf Scala 11 und darunter ist der Flag extra-implicit nicht vorhanden. */
-      case Some((2, major)) if major >= 12 ⇒
-        Seq(
-          "-Ywarn-extra-implicit",
-          "-Ywarn-unused:_,-implicits,-patvars",
-          "-opt:l:method",
-          "-opt-warnings:_")
-      case _ ⇒
-        Seq("-Ywarn-unused")
-    }
-  },
   Compile / doc / scalacOptions ++= Seq(
     "-groups",
     "-implicits",

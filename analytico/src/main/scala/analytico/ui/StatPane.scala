@@ -5,7 +5,7 @@ import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.Random
-import scalafx.beans.property.{ BooleanProperty, ObjectProperty, StringProperty }
+import scalafx.beans.property.{ BooleanProperty, ObjectProperty }
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.Node
 import scalafx.scene.control._
@@ -19,11 +19,17 @@ import analytico.data.ViewCount
 import analytico.data.ViewCount._
 import analytico.youtube.YTAuth
 import analytico.youtube.YTScope._
+import cats.Show
+import io.circe.Decoder.Result
+import io.circe._
+import io.circe.generic.auto._
+import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
+import io.circe.syntax._
 
 /**
   * Eine Repräsentation eines Statistik-Panels. Siehe die konkreten Subklassen für Implementationen.
   */
-trait StatPane {
+sealed trait StatPane {
   /**
     * Füllt den gegebenen Tab mit der momentanen Statistik, das gegebene Pane mit den eigenen Buttons.
     *
@@ -41,10 +47,11 @@ object StatPane {
     def cancel(): Unit
   }
 
-  class YoutubeStatPane(val credentialsName: String,
-                        displayName: String,
-                        val channelId: String,
-                        val analytics: YouTubeAnalytics)
+  final case class YoutubeStatPane(credentialsName: String,
+                                   var displayName: String,
+                                   channelId: String,
+                                   analytics: YouTubeAnalytics,
+                                   unsavedMarker: BooleanProperty)
     extends StatPane {
 
     private[this] val valid = BooleanProperty(false)
@@ -52,7 +59,6 @@ object StatPane {
     val liveStats: BooleanProperty = BooleanProperty(true)
     val videoStats: BooleanProperty = BooleanProperty(false)
     val combinedStats: BooleanProperty = BooleanProperty(false)
-    val name = StringProperty(displayName)
 
     liveStats onInvalidate invalidate
     videoStats onInvalidate invalidate
@@ -60,6 +66,7 @@ object StatPane {
 
     def invalidate(): Unit = {
       valid() = false
+      unsavedMarker() = true
     }
 
     // TODO: Configurable dates.
@@ -76,7 +83,11 @@ object StatPane {
     }
 
     override def initialize(tab: Tab, pane: Option[Pane]): Unit = {
-      tab.text <==> name
+      tab.text() = displayName
+      tab.text.onChange { (_, _, newName) ⇒
+        displayName = newName
+        unsavedMarker() = true
+      }
 
       type T = ViewCount
 
@@ -140,7 +151,7 @@ object StatPane {
   }
 
   object YoutubeStatPane {
-    def apply(name: String): (Cancelable, Future[YoutubeStatPane]) = {
+    def apply(name: String, unsavedMarker: BooleanProperty): (Cancelable, Future[YoutubeStatPane]) = {
       val sanitizedName =
         f"${s"analytico${name.replaceAll("[^\\w]", "")}".take(22)}%s${Random.nextInt().toHexString}%8s".replace(' ', '0').take(30)
 
@@ -157,13 +168,56 @@ object StatPane {
 
       (
         () => receiver.stop(),
-        (channelId zipWith analytics) { new YoutubeStatPane(sanitizedName, name, _, _) }
+        (channelId zipWith analytics) { new YoutubeStatPane(sanitizedName, name, _, _, unsavedMarker) }
       )
+    }
+
+    private[StatPane] implicit val youtubeStatPaneEncoder: Encoder[YoutubeStatPane] = (statPane: YoutubeStatPane) => Json.obj(
+      "credentials" → statPane.credentialsName.asJson,
+      "displayName" → statPane.displayName.asJson,
+      "channelId" → statPane.channelId.asJson
+    )
+    private[StatPane] implicit val youtubeStatPaneDecoder: Decoder[YoutubeStatPane] = { (c: HCursor) ⇒
+      val failureShow = Show[DecodingFailure]
+      import failureShow.show
+      @inline
+      def get[R: Decoder](name: String): Result[R] = c.downField(name).as[R]
+
+      def failures2(err1: DecodingFailure, err2: DecodingFailure) = Left(DecodingFailure(
+        s"""Multiple errors (2):
+           | - ${show(err1)}
+           | - ${show(err2)}""".stripMargin, c.history))
+
+      def failures3(err1: DecodingFailure, err2: DecodingFailure, err3: DecodingFailure) = Left(DecodingFailure(
+        s"""Multiple errors (3):
+           | - ${show(err1)}
+           | - ${show(err2)}
+           | - ${show(err3)}""".stripMargin, c.history))
+
+      (get[String]("credentials"), get[String]("displayName"), get[String]("channelId")) match {
+        case (Right(cred), Right(name), Right(channelId)) ⇒ Right(
+          // TODO
+          new YoutubeStatPane(cred, name, channelId, null, BooleanProperty(false))
+        )
+
+        case (l @ Left(_), _ @ Right(_), _ @ Right(_)) ⇒ l.asInstanceOf[Result[YoutubeStatPane]]
+        case (_ @ Right(_), l @ Left(_), _ @ Right(_)) ⇒ l.asInstanceOf[Result[YoutubeStatPane]]
+        case (_ @ Right(_), _ @ Right(_), l @ Left(_)) ⇒ l.asInstanceOf[Result[YoutubeStatPane]]
+
+        case (Right(_), Left(err), Left(err2)) ⇒ failures2(err, err2)
+        case (Left(err), Right(_), Left(err2)) ⇒ failures2(err, err2)
+        case (Left(err), Left(err2), Right(_)) ⇒ failures2(err, err2)
+
+        case (Left(err), Left(err2), Left(err3)) ⇒ failures3(err, err2, err3)
+      }
     }
   }
 
   object NoStatsPane extends StatPane {
     override def initialize(tab: Tab, pane: Option[Pane]): Unit = ()
   }
+
+  implicit val statPaneEncoder: Encoder[StatPane] = deriveEncoder[StatPane]
+  implicit val statPaneDecoder: Decoder[StatPane] = deriveDecoder[StatPane]
 
 }
