@@ -5,6 +5,7 @@ jdk:
   - oraclejdk8
   - openjdk8
 script:
+  - sudo apt-get install openjfx
   - sbt ++$TRAVIS_SCALA_VERSION clean coverage test
 
 after_success:
