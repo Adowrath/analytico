@@ -70,19 +70,12 @@ lazy val commonSettings = Seq(
   addCompilerPlugin(paradiseDependency),
 
   /**
-    * Cross-Building? Warum nicht!
-    */
-  crossScalaVersions := Seq("2.11.12", "2.12.4" /*, "2.13.0-M2"*/),
-
-  /**
     * Damit IntelliJ einfacher eigene Rebuilds machen kann.
     * https://github.com/JetBrains/sbt-ide-settings/tree/750b993453fb3d1f31f371968d06e3fc792870a1#using-the-settings-without-plugin
     */
   Compile / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" /      "classes"),
   Test    / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" / "test-classes"),
   fork := true,
-
-  coverageEnabled := true,
 
   wartremoverWarnings ++= {
     import Wart._
