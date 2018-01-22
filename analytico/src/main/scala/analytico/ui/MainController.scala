@@ -14,6 +14,8 @@ import scalafx.scene.layout._
 import scalafx.stage._
 import scalafxml.core.macros.sfxml
 
+import org.scalactic.TypeCheckedTripleEquals._
+
 import analytico.ui.StatPane._
 
 @sfxml

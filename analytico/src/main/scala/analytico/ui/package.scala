@@ -4,6 +4,8 @@ import scalafx.Includes.handle
 import scalafx.beans.property.BooleanProperty
 import scalafx.scene.control.{ Button, CheckBox }
 
+import org.scalactic.TypeCheckedTripleEquals._
+
 package object ui {
   /**
     * Constructs a simple button with a custom handler, and, optionally,
@@ -20,7 +22,7 @@ package object ui {
     */
   def button[R](name: String, disabled: BooleanProperty = null)(handler: ⇒ R): Button = {
     val b = new Button(name)
-    if(disabled =/= null)
+    if(disabled !== null)
       b.disable <== disabled
     b.onAction = handle(handler)
     b
@@ -41,7 +43,7 @@ package object ui {
     */
   def checkBox[R](name: String, checked: BooleanProperty = null)(handler: ⇒ R): CheckBox = {
     val cb = new CheckBox(name)
-    if(checked =/= null)
+    if(checked !== null)
       cb.selected <==> checked
     cb.onAction = handle(handler)
     cb

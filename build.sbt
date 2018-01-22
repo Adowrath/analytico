@@ -11,41 +11,41 @@ lazy val commonSettings = Seq(
     "-feature",
     "-explaintypes",
 
-//    "-Xfuture",
-//
-//    "-Xlog-free-terms",
-//    "-Xlog-free-types",
-//    //"-Xlog-implicits",
-//
-//    "-Xverify",
-//    "-Xlint:_",
-//
-//    "-Yno-adapted-args",
-//    "-Yrangepos",
-//
-//    "-Ywarn-adapted-args",
-//    "-Ywarn-dead-code",
-//    "-Ywarn-inaccessible",
-//    "-Ywarn-infer-any",
-//    "-Ywarn-nullary-override",
-//    "-Ywarn-nullary-unit",
-//    "-Ywarn-numeric-widen",
-//    "-Ywarn-unused-import",
-//    "-Ywarn-value-discard"
-//  ),
-//  scalacOptions ++= {
-//    CrossVersion.partialVersion(scalaVersion.value) match {
-//      /** Auf Scala 11 und darunter ist der Flag extra-implicit nicht vorhanden. */
-//      case Some((2, major)) if major >= 12 ⇒
-//        Seq(
-//          "-Ywarn-extra-implicit",
-//          "-Ywarn-unused:_,-implicits,-patvars",
-//          "-opt:l:method",
-//          "-opt-warnings:_")
-//      case _ ⇒
-//        Seq("-Ywarn-unused")
-//    }
+    "-Xfuture",
+
+    "-Xlog-free-terms",
+    "-Xlog-free-types",
+    //"-Xlog-implicits",
+
+    "-Xverify",
+    "-Xlint:_",
+
+    "-Yno-adapted-args",
+    "-Yrangepos",
+
+    "-Ywarn-adapted-args",
+    "-Ywarn-dead-code",
+    "-Ywarn-inaccessible",
+    "-Ywarn-infer-any",
+    "-Ywarn-nullary-override",
+    "-Ywarn-nullary-unit",
+    "-Ywarn-numeric-widen",
+    "-Ywarn-unused-import",
+    "-Ywarn-value-discard"
   ),
+  scalacOptions ++= {
+    CrossVersion.partialVersion(scalaVersion.value) match {
+      /** Auf Scala 11 und darunter ist der Flag extra-implicit nicht vorhanden. */
+      case Some((2, major)) if major >= 12 ⇒
+        Seq(
+          "-Ywarn-extra-implicit",
+          "-Ywarn-unused:_,-implicits,-patvars",
+          "-opt:l:method",
+          "-opt-warnings:_")
+      case _ ⇒
+        Seq("-Ywarn-unused")
+    }
+  },
   Compile / doc / scalacOptions ++= Seq(
     "-groups",
     "-implicits",
@@ -72,7 +72,7 @@ lazy val commonSettings = Seq(
   /**
     * Cross-Building? Warum nicht!
     */
-  crossScalaVersions := Seq("2.11.12", "2.12.4"/*, "2.13.0-M2"*/),
+  crossScalaVersions := Seq("2.11.12", "2.12.4" /*, "2.13.0-M2"*/),
 
   /**
     * Damit IntelliJ einfacher eigene Rebuilds machen kann.
@@ -81,14 +81,19 @@ lazy val commonSettings = Seq(
   Compile / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" /      "classes"),
   Test    / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" / "test-classes"),
   fork := true,
+
+  coverageEnabled := true,
+
   wartremoverWarnings ++= {
     import Wart._
     Warts.allBut(
+      Any,
       AsInstanceOf,
       DefaultArguments,
       ImplicitParameter,
       MutableDataStructures,
       NonUnitStatements,
+      Nothing,
       Overloading,
       Option2Iterable,
       Recursion,
@@ -123,7 +128,13 @@ lazy val miscDependencies = Seq(
     */
   "io.circe" %% "circe-core" % "0.9.0",
   "io.circe" %% "circe-generic" % "0.9.0",
-  "io.circe" %% "circe-parser" % "0.9.0"
+  "io.circe" %% "circe-parser" % "0.9.0",
+
+  /**
+    * ScalaTest dependencies.
+    */
+  "org.scalactic" %% "scalactic" % "3.0.4",
+  "org.scalatest" %% "scalatest" % "3.0.4" % "test"
 )
 
 lazy val excelDependencies = Seq(

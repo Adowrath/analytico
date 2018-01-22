@@ -5,12 +5,13 @@ import scala.collection.JavaConverters._
 import java.time.LocalDate
 
 import com.google.api.services.youtubeAnalytics.model.ResultTable
+import org.scalactic.TypeCheckedTripleEquals._
 import org.threeten.extra.YearWeek
 
+import cats.{ Eq, Show }
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.generic.semiauto._
-import io.circe.syntax._
 
 /**
   * Eine Repräsentation der View-Statistiken in einer Woche, zusätzlich zur Information,
@@ -103,27 +104,15 @@ object ViewCount {
   /** Die gesamten Zuschauerstatistiken, Live und On Demand kombiniert. */
   case object Combined extends ViewType("Kombiniert")
 
-  implicit val yearWeekEncoder: Encoder[YearWeek] = (a: YearWeek) => Json.obj(
-    "year" → a.getYear.asJson,
-    "week" → a.getWeek.asJson
-  )
-  implicit val yearWeekDecoder: Decoder[YearWeek] = (c: HCursor) => {
-    (c.downField("year"), c.downField("week")) match {
-      case (yc: HCursor, wc: HCursor) ⇒
-        (yc.as[Int], wc.value.as[Int]) match {
-          case (Right(y), Right(w)) ⇒ Right(YearWeek.of(y, w))
-          case (l @ Left(_), Right(_)) ⇒ l.asInstanceOf[Either[DecodingFailure, YearWeek]]
-          case (Right(_), l @ Left(_)) ⇒ l.asInstanceOf[Either[DecodingFailure, YearWeek]]
-          case (Left(err), Left(err2)) ⇒
-            Left(DecodingFailure(s"Multiple errors: ${err.message}, ${err2.message}", c.history))
+  implicit val yearWeekEncoder: Encoder[YearWeek] =
+    Encoder.forProduct2("year", "week")(yw ⇒ (yw.getYear, yw.getWeek))
 
-        }
-      case (_: HCursor, _) ⇒ Left(DecodingFailure("Decoding a YearWeek failed. Week missing.", c.history))
-      case (_, _: HCursor) ⇒ Left(DecodingFailure("Decoding a YearWeek failed. Year missing.", c.history))
-      case (_, _) ⇒ Left(DecodingFailure("Decoding a YearWeek failed. Year and Week missing.", c.history))
-    }
-  }
+  implicit val yearWeekDecoder: Decoder[YearWeek] =
+    Decoder.forProduct2("year", "week")(YearWeek.of)
 
   implicit val viewCountEncoder: Encoder[ViewCount] = deriveEncoder[ViewCount]
   implicit val viewCountDecoder: Decoder[ViewCount] = deriveDecoder[ViewCount]
+
+  implicit val viewCountShow: Show[ViewCount] = Show.fromToString[ViewCount]
+  implicit val viewCountEq: Eq[ViewCount] = Eq.fromUniversalEquals[ViewCount]
 }

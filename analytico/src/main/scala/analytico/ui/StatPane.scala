@@ -50,8 +50,7 @@ object StatPane {
   final case class YoutubeStatPane(credentialsName: String,
                                    var displayName: String,
                                    channelId: String,
-                                   analytics: YouTubeAnalytics,
-                                   unsavedMarker: BooleanProperty)
+                                   analytics: YouTubeAnalytics)
     extends StatPane {
 
     private[this] val valid = BooleanProperty(false)
@@ -66,7 +65,6 @@ object StatPane {
 
     def invalidate(): Unit = {
       valid() = false
-      unsavedMarker() = true
     }
 
     // TODO: Configurable dates.
@@ -86,7 +84,6 @@ object StatPane {
       tab.text() = displayName
       tab.text.onChange { (_, _, newName) ⇒
         displayName = newName
-        unsavedMarker() = true
       }
 
       type T = ViewCount
@@ -151,7 +148,7 @@ object StatPane {
   }
 
   object YoutubeStatPane {
-    def apply(name: String, unsavedMarker: BooleanProperty): (Cancelable, Future[YoutubeStatPane]) = {
+    def apply(name: String): (Cancelable, Future[YoutubeStatPane]) = {
       val sanitizedName =
         f"${s"analytico${name.replaceAll("[^\\w]", "")}".take(22)}%s${Random.nextInt().toHexString}%8s".replace(' ', '0').take(30)
 
@@ -168,7 +165,7 @@ object StatPane {
 
       (
         () => receiver.stop(),
-        (channelId zipWith analytics) { new YoutubeStatPane(sanitizedName, name, _, _, unsavedMarker) }
+        (channelId zipWith analytics) { new YoutubeStatPane(sanitizedName, name, _, _) }
       )
     }
 
@@ -197,7 +194,7 @@ object StatPane {
       (get[String]("credentials"), get[String]("displayName"), get[String]("channelId")) match {
         case (Right(cred), Right(name), Right(channelId)) ⇒ Right(
           // TODO
-          new YoutubeStatPane(cred, name, channelId, null, BooleanProperty(false))
+          new YoutubeStatPane(cred, name, channelId, null)
         )
 
         case (l @ Left(_), _ @ Right(_), _ @ Right(_)) ⇒ l.asInstanceOf[Result[YoutubeStatPane]]
