@@ -66,7 +66,7 @@ object YTAuth {
     val credentialsFile = new File(userHome + "/" + credentialsDir)
     // Falls eine Re-Authorisierung gewünscht ist.
     if(reauthorize)
-      Files.delete(credentialsFile.toPath.resolve(datastoreName))
+      Files.deleteIfExists(credentialsFile.toPath.resolve(datastoreName))
 
     // This creates the credentials datastore at ~/.oauth-credentials/${datastoreName}
     val fileDataStoreFactory = new FileDataStoreFactory(credentialsFile)

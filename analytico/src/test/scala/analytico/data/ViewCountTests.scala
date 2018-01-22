@@ -1,4 +1,5 @@
-package analytico.data
+package analytico
+package data
 
 import scala.collection.JavaConverters._
 import java.time.DayOfWeek

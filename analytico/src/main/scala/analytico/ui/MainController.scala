@@ -5,18 +5,23 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.Try
 import scalafx.Includes._
 import scalafx.application.Platform
-import scalafx.beans.property.ObjectProperty
+import scalafx.beans.property.{ BooleanProperty, ObjectProperty }
 import scalafx.scene._
+import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
 import scalafx.scene.layout._
 import scalafx.stage._
 import scalafxml.core.macros.sfxml
+import java.nio.file.{ Files, Paths }
+import javafx.stage.FileChooser.ExtensionFilter
 
 import org.scalactic.TypeCheckedTripleEquals._
 
 import analytico.ui.StatPane._
+import io.circe.syntax._
 
 @sfxml
 class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace: VBox) {
@@ -33,6 +38,8 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
   def nodesToDisable: Seq[Node] =
     buttonSpace.children.map(n ⇒ n: Node).dropRight(1) :+ tabPane
 
+  val unsavedChanges: BooleanProperty = BooleanProperty(false)
+
   /* Utility methods */
   /**
     * Constructs a new Button that, when pressed, will run a given
@@ -44,9 +51,9 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     *
     * @return returns the new button
     */
-  def apiButton(buttonName: String, tab: Tab)(handler: String ⇒ (Cancelable, Future[StatPane])): Button = button(buttonName) {
+  def apiButton(buttonName: String, tab: Tab)(handler: (String, BooleanProperty) ⇒ (Cancelable, Future[StatPane])): Button = button(buttonName) {
     disable(waiting = true)
-    val (cancelable, pane) = handler(tab.text())
+    val (cancelable, pane) = handler(tab.text(), unsavedChanges)
     currentCancelable() = Some(cancelable)
     pane map { pane ⇒
       panes(tab.text()) = pane
@@ -67,6 +74,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     tab.text = name
     tabPane += tab
     tabPane.selectionModel().select(tab)
+    unsavedChanges() = true
   }
 
   def disable(waiting: Boolean): Unit = {
@@ -175,7 +183,58 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     dialog.show()
   }
 
-  def clicked(): Unit = {
+  def save(): Boolean = {
+    val fileChooser = new FileChooser()
 
+    fileChooser.title = "Speicherplatz auswählen."
+    fileChooser.extensionFilters ++= Seq(
+      new ExtensionFilter("JSON-Dateien", "*.json"),
+      new ExtensionFilter("Alle Dateien", "*.*")
+    )
+    fileChooser.initialFileName = "analytico.json"
+    fileChooser.initialDirectory = Paths.get(System.getProperty("user.dir")).toFile
+
+    Option(fileChooser.showSaveDialog(stage)) match {
+      case Some(file) ⇒
+        val bw = Files.newBufferedWriter(file.toPath)
+        Try {
+          val code = panes.asJson.spaces2
+          bw.write(code)
+          bw.close()
+          unsavedChanges() = false
+          true
+        } getOrElse false
+      case None ⇒
+        false
+    }
+  }
+
+  Platform.runLater {
+    stage.onCloseRequest = { event ⇒
+      if(unsavedChanges()) {
+        val Save = new ButtonType("Speichern")
+        val Close = new ButtonType("Schliessen")
+
+        val dialog = new Alert(AlertType.Warning)
+        import dialog._
+        initOwner(stage)
+        title = "Sie haben ungesicherte Änderungen!"
+        headerText = "Wollen Sie die Änderungen speichern?"
+        buttonTypes = Seq(Save, Close, ButtonType.Cancel)
+
+        val result = dialog.showAndWait()
+
+        result match {
+          case Some(`Save`) ⇒
+            if(!save())
+              event.consume()
+          case Some(`Close`) ⇒
+            ()
+          case Some(_) | None ⇒
+            event.consume()
+        }
+      }
+    }
   }
 }
+

@@ -50,7 +50,8 @@ object StatPane {
   final case class YoutubeStatPane(credentialsName: String,
                                    var displayName: String,
                                    channelId: String,
-                                   analytics: YouTubeAnalytics)
+                                   analytics: YouTubeAnalytics,
+                                   unsavedMarker: BooleanProperty)
     extends StatPane {
 
     private[this] val valid = BooleanProperty(false)
@@ -65,6 +66,7 @@ object StatPane {
 
     def invalidate(): Unit = {
       valid() = false
+      unsavedMarker() = true
     }
 
     // TODO: Configurable dates.
@@ -84,6 +86,7 @@ object StatPane {
       tab.text() = displayName
       tab.text.onChange { (_, _, newName) ⇒
         displayName = newName
+        unsavedMarker() = true
       }
 
       type T = ViewCount
@@ -148,7 +151,7 @@ object StatPane {
   }
 
   object YoutubeStatPane {
-    def apply(name: String): (Cancelable, Future[YoutubeStatPane]) = {
+    def apply(name: String, unsavedMarker: BooleanProperty): (Cancelable, Future[YoutubeStatPane]) = {
       val sanitizedName =
         f"${s"analytico${name.replaceAll("[^\\w]", "")}".take(22)}%s${Random.nextInt().toHexString}%8s".replace(' ', '0').take(30)
 
@@ -165,49 +168,14 @@ object StatPane {
 
       (
         () => receiver.stop(),
-        (channelId zipWith analytics) { new YoutubeStatPane(sanitizedName, name, _, _) }
+        (channelId zipWith analytics) { new YoutubeStatPane(sanitizedName, name, _, _, unsavedMarker) }
       )
     }
 
-    private[StatPane] implicit val youtubeStatPaneEncoder: Encoder[YoutubeStatPane] = (statPane: YoutubeStatPane) => Json.obj(
-      "credentials" → statPane.credentialsName.asJson,
-      "displayName" → statPane.displayName.asJson,
-      "channelId" → statPane.channelId.asJson
-    )
-    private[StatPane] implicit val youtubeStatPaneDecoder: Decoder[YoutubeStatPane] = { (c: HCursor) ⇒
-      val failureShow = Show[DecodingFailure]
-      import failureShow.show
-      @inline
-      def get[R: Decoder](name: String): Result[R] = c.downField(name).as[R]
-
-      def failures2(err1: DecodingFailure, err2: DecodingFailure) = Left(DecodingFailure(
-        s"""Multiple errors (2):
-           | - ${show(err1)}
-           | - ${show(err2)}""".stripMargin, c.history))
-
-      def failures3(err1: DecodingFailure, err2: DecodingFailure, err3: DecodingFailure) = Left(DecodingFailure(
-        s"""Multiple errors (3):
-           | - ${show(err1)}
-           | - ${show(err2)}
-           | - ${show(err3)}""".stripMargin, c.history))
-
-      (get[String]("credentials"), get[String]("displayName"), get[String]("channelId")) match {
-        case (Right(cred), Right(name), Right(channelId)) ⇒ Right(
-          // TODO
-          new YoutubeStatPane(cred, name, channelId, null)
-        )
-
-        case (l @ Left(_), _ @ Right(_), _ @ Right(_)) ⇒ l.asInstanceOf[Result[YoutubeStatPane]]
-        case (_ @ Right(_), l @ Left(_), _ @ Right(_)) ⇒ l.asInstanceOf[Result[YoutubeStatPane]]
-        case (_ @ Right(_), _ @ Right(_), l @ Left(_)) ⇒ l.asInstanceOf[Result[YoutubeStatPane]]
-
-        case (Right(_), Left(err), Left(err2)) ⇒ failures2(err, err2)
-        case (Left(err), Right(_), Left(err2)) ⇒ failures2(err, err2)
-        case (Left(err), Left(err2), Right(_)) ⇒ failures2(err, err2)
-
-        case (Left(err), Left(err2), Left(err3)) ⇒ failures3(err, err2, err3)
-      }
-    }
+    implicit val youtubeStatPaneEncoder: Encoder[YoutubeStatPane] =
+      Encoder.forProduct3("credentials", "displayName", "channelId")(ysp ⇒ (ysp.credentialsName, ysp.displayName, ysp.channelId))
+    implicit val youtubeStatPaneDecoder: Decoder[YoutubeStatPane] =
+      Decoder.forProduct3("credentials", "displayName", "channelId")(new YoutubeStatPane(_: String, _: String, _: String, null, BooleanProperty(false)))
   }
 
   object NoStatsPane extends StatPane {
