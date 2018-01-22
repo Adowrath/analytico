@@ -2,8 +2,10 @@ package analytico
 package data
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 import java.time.LocalDate
 
+import org.scalactic.Requirements._
 import com.google.api.services.youtubeAnalytics.model.ResultTable
 import org.scalactic.TypeCheckedTripleEquals._
 import org.threeten.extra.YearWeek
@@ -24,7 +26,7 @@ import io.circe.generic.semiauto._
   */
 final case class ViewCount(yearWeek: YearWeek, viewType: ViewCount.ViewType, views: BigDecimal, estimatedMinutes: BigDecimal) {
   override def toString: String =
-    s"ViewCount(yearWeek: $yearWeek, viewType: $viewType, views: $views, estimatedMinutes: $estimatedMinutes, avg: ${averageDuration}s)"
+    s"ViewCount(yearWeek: $yearWeek, viewType: $viewType, views: $views, estimatedMinutes: $estimatedMinutes, avg: ${Try(averageDuration.toString()).getOrElse("{NaN}")}s)"
 
   /** Die ungefähre Zuschauzeit in Sekunden. */
   def averageDuration: BigDecimal = estimatedMinutes * 60 / views
@@ -54,11 +56,10 @@ object ViewCount {
     */
   def fromResults(results: ResultTable): Seq[ViewCount] = {
     require(results.getColumnHeaders.asScala.map(_.getName).toList === tableStructure,
-      s"Die ResultTable muss die richtige Struktur haben: $tableStructure.\n" +
-        s"Es war jedoch: ${results.getColumnHeaders.asScala.map(_.getName)}")
+      s"Die ResultTable muss die richtige Struktur haben!")
 
     Option(results.getRows).fold(Nil: Seq[ViewCount]) { list ⇒
-      val weeklyStats = list.asScala.map(_.asScala) groupBy getYearWeek
+      val weeklyStats = list.asScala.map(_.asScala) groupBy extractYearWeek
 
       weeklyStats.flatMap { case (weekInYear, stats) ⇒
         stats.partition(_ (1) === "LIVE") match {
@@ -81,7 +82,7 @@ object ViewCount {
   /** Parst das Jahr und die Woche aus der Liste heraus. */
   @SuppressWarnings(Array("org.wartremover.warts.ToString"))
   private[this]
-  def getYearWeek(l: Seq[AnyRef]): YearWeek = YearWeek.from(LocalDate.parse(l.head.toString))
+  def extractYearWeek(l: Seq[AnyRef]): YearWeek = YearWeek.from(LocalDate.parse(l.head.toString))
 
   /** Summiert die View-Zahlen und Minutenwerte über eine Woche hinweg. `AnyRef` da `ResultTable`. */
   private[this]
