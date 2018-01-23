@@ -11,10 +11,17 @@ matrix:
   allow_failures:
   - jdk: oraclejdk9
 
+addons:
+  apt:
+    packages:
+      - xvfb
+
 script:
+  - Xvfb :99
+  - export DISPLAY=:99
   - sbt ++$TRAVIS_SCALA_VERSION clean coverage test
 
 after_success:
-  - sbt ++$TRAVIS_SCALA_VERSION coverageReport &&
-    sbt ++$TRAVIS_SCALA_VERSION coverageAggregate &&
-    sbt ++$TRAVIS_SCALA_VERSION codacyCoverage
+  - sbt ++$TRAVIS_SCALA_VERSION coverageReport
+  - sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
+  - sbt ++$TRAVIS_SCALA_VERSION codacyCoverage
