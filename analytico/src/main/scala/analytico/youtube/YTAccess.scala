@@ -43,8 +43,7 @@ object YTAccess {
   * @since 29.11.2017
   * @version v1.0
   */
-trait AnalyticsAccess {
-  self: GenericYTAccess ⇒
+trait AnalyticsAccess { self: GenericYTAccess ⇒
   def buildAnalytics(applicationTitle: String)(implicit evidence: Req[AnalyticsReadOnly]): YouTubeAnalytics =
     new YouTubeAnalytics.Builder(httpTransport, jsonFactory, credential)
       .setApplicationName(applicationTitle)
@@ -59,8 +58,7 @@ trait AnalyticsAccess {
   * @since 29.11.2017
   * @version v1.0
   */
-trait YoutubeDataAccess {
-  self: GenericYTAccess ⇒
+trait YoutubeDataAccess { self: GenericYTAccess ⇒
   def youtubeData(applicationTitle: String)(implicit evidence: Req[YoutubeReadOnly]): YouTubeData[Scopes] =
     new YouTubeData[Scopes](buildDataAPI(applicationTitle))
 

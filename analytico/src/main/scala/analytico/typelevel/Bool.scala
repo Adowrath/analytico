@@ -69,7 +69,7 @@ object Bool {
     /**
       * @usecase type If[Then, _1, _2] = Then
       *
-      * Gibt den ersten Typ, `Then`, zurück.
+      *          Gibt den ersten Typ, `Then`, zurück.
       */
     override type If[Then <: Upper, Else <: Upper, Upper] = Then
     override type Not = False
@@ -93,7 +93,7 @@ object Bool {
     /**
       * @usecase type If[_0, Else, _2] = Else
       *
-      * Gibt den zweiten Typ, `Else`, zurück.
+      *          Gibt den zweiten Typ, `Else`, zurück.
       */
     override type If[Then <: Upper, Else <: Upper, Upper] = Else
     override type Not = True

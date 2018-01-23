@@ -3,9 +3,6 @@ package ui
 
 import scalafx.beans.property.BooleanProperty
 
-import com.google.api.client.http.javanet.NetHttpTransport
-import com.google.api.client.json.jackson2.JacksonFactory
-import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
 import org.scalactic.CanEqual
 import org.scalatest._
 
@@ -22,13 +19,14 @@ class StatPaneTests extends FlatSpec with Matchers with EitherValues with Privat
       left.channelId === right.channelId
   }
 
-  val analytics: YouTubeAnalytics = new YouTubeAnalytics(new NetHttpTransport, new JacksonFactory, null)
-
-  val youtubeStats: YoutubeStatPane = new YoutubeStatPane("credentialsName", "displayName", "channelId", analytics, BooleanProperty(true))
+  val youtubeStats: YoutubeStatPane = new YoutubeStatPane("credentialsName", "displayName", "channelId", None, BooleanProperty(false))
   val jsonYoutubeStats: Json = Json.obj(
     "credentials" → "credentialsName".asJson,
     "displayName" → "displayName".asJson,
-    "channelId" → "channelId".asJson
+    "channelId" → "channelId".asJson,
+    "live-stats" → true.asJson,
+    "video-stats" → false.asJson,
+    "combined-stats" → false.asJson
   )
 
   "A YoutubeStatPane" should "serialize to Json correctly" in {

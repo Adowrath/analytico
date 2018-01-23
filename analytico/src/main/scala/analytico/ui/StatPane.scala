@@ -19,12 +19,9 @@ import analytico.data.ViewCount
 import analytico.data.ViewCount._
 import analytico.youtube.YTAuth
 import analytico.youtube.YTScope._
-import cats.Show
-import io.circe.Decoder.Result
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
-import io.circe.syntax._
 
 /**
   * Eine Repräsentation eines Statistik-Panels. Siehe die konkreten Subklassen für Implementationen.
@@ -50,7 +47,7 @@ object StatPane {
   final case class YoutubeStatPane(credentialsName: String,
                                    var displayName: String,
                                    channelId: String,
-                                   analytics: YouTubeAnalytics,
+                                   var analytics: Option[YouTubeAnalytics],
                                    unsavedMarker: BooleanProperty)
     extends StatPane {
 
@@ -69,17 +66,25 @@ object StatPane {
       unsavedMarker() = true
     }
 
+    lazy val actualAnalytics: Future[YouTubeAnalytics] = analytics match {
+      case Some(a) ⇒ Future.successful(a)
+      case None ⇒
+        YTAuth.authorize[AnalyticsReadOnly](credentialsName)._2.map(_.buildAnalytics("analytico-relogin"))
+    }
+
     // TODO: Configurable dates.
     lazy val dates: (LocalDate, LocalDate) = datesOfYear(2018)
 
-    lazy val counts: Seq[ViewCount] = ViewCount.fromResults {
-      analytics.reports
-        .query("channel==" + channelId,
-          dates._1.toString,
-          dates._2.toString,
-          "views,estimatedMinutesWatched")
-        .setDimensions("day,liveOrOnDemand")
-        .execute
+    lazy val data: Future[Seq[ViewCount]] = actualAnalytics map { analytics ⇒
+      ViewCount.fromResults {
+        analytics.reports
+          .query("channel==" + channelId,
+            dates._1.toString,
+            dates._2.toString,
+            "views,estimatedMinutesWatched")
+          .setDimensions("day,liveOrOnDemand")
+          .execute
+      }
     }
 
     override def initialize(tab: Tab, pane: Option[Pane]): Unit = {
@@ -109,31 +114,33 @@ object StatPane {
         f"$h%d:$m%02d:$s%02d"
       }
 
-      tab.content = {
-        val tabView = new TableView[ViewCount](ObservableBuffer {
-          counts.filter {
-            _.viewType match {
-              case Live ⇒ liveStats()
-              case Video ⇒ videoStats()
-              case Combined ⇒ combinedStats()
+      data.foreach { counts ⇒
+        tab.content = {
+          val tabView = new TableView[ViewCount](ObservableBuffer {
+            counts.filter {
+              _.viewType match {
+                case Live ⇒ liveStats()
+                case Video ⇒ videoStats()
+                case Combined ⇒ combinedStats()
+              }
             }
-          }
-        })
-        tabView.editable = false
+          })
+          tabView.editable = false
 
-        /** Falls 2 oder mehr aktiv sind */
-        if((liveStats() && (videoStats() || combinedStats())) || videoStats() && combinedStats()) {
-          tabView.columns.add(
-            column("Art") { _.viewType }
+          /** Falls 2 oder mehr aktiv sind */
+          if((liveStats() && (videoStats() || combinedStats())) || videoStats() && combinedStats()) {
+            tabView.columns.add(
+              column("Art") { _.viewType }
+            )
+          }
+          tabView.columns.addAll(
+            column("KW") { _.yearWeek.getWeek },
+            column("Aufrufe") { _.views.toBigInt },
+            column("Durschnittliche Wiedergabedauer") { vc ⇒ secondsToString(vc.averageDuration) },
+            column("Total Zuschauerzeit") { vc ⇒ secondsToString(vc.estimatedMinutes * 60) }
           )
+          tabView
         }
-        tabView.columns.addAll(
-          column("KW") { _.yearWeek.getWeek },
-          column("Aufrufe") { _.views.toBigInt },
-          column("Durschnittliche Wiedergabedauer") { vc ⇒ secondsToString(vc.averageDuration) },
-          column("Total Zuschauerzeit") { vc ⇒ secondsToString(vc.estimatedMinutes * 60) }
-        )
-        tabView
       }
 
       pane.foreach(_.children.addAll(settings(tab).map(_.delegate).asJava))
@@ -168,14 +175,25 @@ object StatPane {
 
       (
         () => receiver.stop(),
-        (channelId zipWith analytics) { new YoutubeStatPane(sanitizedName, name, _, _, unsavedMarker) }
+        (channelId zipWith analytics) { (channelId, analytics) ⇒
+          new YoutubeStatPane(sanitizedName, name, channelId, Some(analytics), unsavedMarker)
+        }
       )
     }
 
     implicit val youtubeStatPaneEncoder: Encoder[YoutubeStatPane] =
-      Encoder.forProduct3("credentials", "displayName", "channelId")(ysp ⇒ (ysp.credentialsName, ysp.displayName, ysp.channelId))
+      Encoder.forProduct6("credentials", "displayName", "channelId", "live-stats", "video-stats", "combined-stats") { ysp ⇒
+        (ysp.credentialsName, ysp.displayName, ysp.channelId, ysp.liveStats(), ysp.videoStats(), ysp.combinedStats())
+      }
     implicit val youtubeStatPaneDecoder: Decoder[YoutubeStatPane] =
-      Decoder.forProduct3("credentials", "displayName", "channelId")(new YoutubeStatPane(_: String, _: String, _: String, null, BooleanProperty(false)))
+      Decoder.forProduct6("credentials", "displayName", "channelId", "live-stats", "video-stats", "combined-stats") {
+        (credentialsName: String, displayName: String, channelId: String, liveStats: Boolean, videoStats: Boolean, combinedStats: Boolean) ⇒
+          val ysp = new YoutubeStatPane(credentialsName, displayName, channelId, None, BooleanProperty(false))
+          ysp.liveStats() = liveStats
+          ysp.videoStats() = videoStats
+          ysp.combinedStats() = combinedStats
+          ysp
+      }
   }
 
   object NoStatsPane extends StatPane {

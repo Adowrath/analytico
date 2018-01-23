@@ -112,7 +112,8 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
       case Some(pane) ⇒
         buttonSpace.children = Nil
         pane.initialize(newTab, Some(buttonSpace))
-        buttonSpace.children.addAll(commonButtons(newTab).map(_.delegate).asJava)
+        buttonSpace.children ++= commonButtons(newTab).map(_.delegate)
+        ()
     }
   }
 

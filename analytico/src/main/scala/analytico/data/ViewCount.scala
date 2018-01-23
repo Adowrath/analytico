@@ -5,8 +5,8 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 import java.time.LocalDate
 
-import org.scalactic.Requirements._
 import com.google.api.services.youtubeAnalytics.model.ResultTable
+import org.scalactic.Requirements._
 import org.scalactic.TypeCheckedTripleEquals._
 import org.threeten.extra.YearWeek
 
