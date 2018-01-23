@@ -1,17 +1,15 @@
 package analytico
 package ui
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
 import scalafx.beans.property.BooleanProperty
 
+import com.google.api.client.http.javanet.NetHttpTransport
+import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
 import org.scalactic.CanEqual
 import org.scalatest._
 
 import analytico.ui.StatPane.YoutubeStatPane
-import analytico.youtube.YTAuth
-import analytico.youtube.YTScope.AnalyticsReadOnly
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
@@ -24,8 +22,7 @@ class StatPaneTests extends FlatSpec with Matchers with EitherValues with Privat
       left.channelId === right.channelId
   }
 
-  val (_, awaitable) = YTAuth.authorize[AnalyticsReadOnly]("strangeName", reauthorize = false)
-  val analytics: YouTubeAnalytics = Await.result(awaitable, Duration.Inf).buildAnalytics("strangeName")
+  val analytics: YouTubeAnalytics = new YouTubeAnalytics(new NetHttpTransport, new JacksonFactory, null)
 
   val youtubeStats: YoutubeStatPane = new YoutubeStatPane("credentialsName", "displayName", "channelId", analytics, BooleanProperty(true))
   val jsonYoutubeStats: Json = Json.obj(

@@ -76,7 +76,7 @@ class ViewCountTests extends FlatSpec with Matchers with EitherValues with Priva
   }
 
   it should "return an empty Seq with empty rows" in {
-    ViewCount fromResults resultTable(Nil: _*) should ===(Seq())
+    ViewCount fromResults resultTable() should ===(Seq())
   }
 
   it should "return a three-element Seq with a simple row" in {
