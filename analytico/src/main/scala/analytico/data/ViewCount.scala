@@ -10,7 +10,7 @@ import org.scalactic.Requirements._
 import org.scalactic.TypeCheckedTripleEquals._
 import org.threeten.extra.YearWeek
 
-import cats.{ Eq, Show }
+import cats.{ Hash, Show }
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.generic.semiauto._
@@ -115,5 +115,10 @@ object ViewCount {
   implicit val viewCountDecoder: Decoder[ViewCount] = deriveDecoder[ViewCount]
 
   implicit val viewCountShow: Show[ViewCount] = Show.fromToString[ViewCount]
-  implicit val viewCountEq: Eq[ViewCount] = Eq.fromUniversalEquals[ViewCount]
+  /**
+    * Wenn IntelliJ das ganze ausführt, findet es keine Methode:
+    * `java.lang.NoSuchMethodError: cats.package$.Hash()Lcats/kernel/Hash$;`
+    * Deswegen wird direkt der Kernel aufgerufen.
+    */
+  implicit val viewCountHash: Hash[ViewCount] = cats.kernel.Hash.fromUniversalHashCode[ViewCount]
 }

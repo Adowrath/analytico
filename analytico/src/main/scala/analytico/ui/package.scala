@@ -48,4 +48,30 @@ package object ui {
     cb.onAction = handle(handler)
     cb
   }
+
+  /**
+    * Turns a time, represented by a BigInt, into a human readable time representation.
+    *
+    * @param seconds the seconds of the duration
+    *
+    * @return a string in the format `hours:minutes:seconds`
+    *
+    * @example
+    * {{{
+    * secondsToTime(  -6) == "-0:00:06"
+    * secondsToTime(   6) == "0:00:06"
+    * secondsToTime(  66) == "0:01:06"
+    * secondsToTime( 666) == "0:11:06"
+    * secondsToTime(6666) == "1:51:06"
+    * }}}
+    */
+  def secondsToTime(seconds: BigInt): String = {
+    val (prefix, actual) = if(seconds < 0) ("-", -seconds) else ("", seconds)
+    val s = actual % 60
+    val minutes = (actual - s) / 60
+    val m = minutes % 60
+    val hours = (minutes - m) / 60
+
+    f"$prefix%s$hours%d:$m%02d:$s%02d"
+  }
 }

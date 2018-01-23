@@ -13,12 +13,14 @@ import scalafx.scene.layout.Pane
 import java.time.LocalDate
 
 import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
+import org.scalactic.TypeCheckedTripleEquals._
 
 import analytico.Main.datesOfYear
 import analytico.data.ViewCount
 import analytico.data.ViewCount._
 import analytico.youtube.YTAuth
 import analytico.youtube.YTScope._
+import cats.Hash
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.generic.semiauto.{ deriveDecoder, deriveEncoder }
@@ -52,6 +54,8 @@ object StatPane {
     extends StatPane {
 
     private[this] val valid = BooleanProperty(false)
+
+    def isValid: Boolean = valid()
 
     val liveStats: BooleanProperty = BooleanProperty(true)
     val videoStats: BooleanProperty = BooleanProperty(false)
@@ -105,15 +109,6 @@ object StatPane {
         col
       }
 
-      def secondsToString(seconds: BigDecimal): String = {
-        val s = seconds % 60 toBigInt()
-        val minutes = (seconds.toBigInt() - s) / 60
-        val m = minutes % 60
-        val h = (minutes - m) / 60
-
-        f"$h%d:$m%02d:$s%02d"
-      }
-
       data.foreach { counts ⇒
         tab.content = {
           val tabView = new TableView[ViewCount](ObservableBuffer {
@@ -136,8 +131,8 @@ object StatPane {
           tabView.columns.addAll(
             column("KW") { _.yearWeek.getWeek },
             column("Aufrufe") { _.views.toBigInt },
-            column("Durschnittliche Wiedergabedauer") { vc ⇒ secondsToString(vc.averageDuration) },
-            column("Total Zuschauerzeit") { vc ⇒ secondsToString(vc.estimatedMinutes * 60) }
+            column("Durschnittliche Wiedergabedauer") { vc ⇒ secondsToTime(vc.averageDuration.toBigInt()) },
+            column("Total Zuschauerzeit") { vc ⇒ secondsToTime(vc.estimatedMinutes.toBigInt() * 60) }
           )
           tabView
         }
@@ -155,6 +150,15 @@ object StatPane {
         initialize(tab, None)
       }
     )
+
+    override def hashCode(): Int =
+      YoutubeStatPane.youtubeStatPaneHash.hash(this)
+
+    override def equals(that: Any): Boolean = that match {
+      case that: YoutubeStatPane ⇒
+        YoutubeStatPane.youtubeStatPaneHash.eqv(this, that)
+      case _ ⇒ false
+    }
   }
 
   object YoutubeStatPane {
@@ -194,6 +198,19 @@ object StatPane {
           ysp.combinedStats() = combinedStats
           ysp
       }
+
+    /** Don't forget: Hash is also an Eq instance! */
+    implicit val youtubeStatPaneHash: Hash[YoutubeStatPane] = new Hash[YoutubeStatPane] {
+      override def hash(that: YoutubeStatPane): Int =
+        that.credentialsName.hashCode ^
+          that.displayName.hashCode ^
+          that.channelId.hashCode
+
+      override def eqv(left: YoutubeStatPane, right: YoutubeStatPane): Boolean =
+        left.credentialsName === right.credentialsName &&
+          left.displayName === right.displayName &&
+          left.channelId === right.channelId
+    }
   }
 
   object NoStatsPane extends StatPane {

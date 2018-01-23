@@ -4,9 +4,6 @@ package data
 import scala.collection.JavaConverters._
 import java.time.DayOfWeek
 
-import com.google.api.services.youtubeAnalytics.model.ResultTable
-import com.google.api.services.youtubeAnalytics.model.ResultTable.ColumnHeaders
-import org.scalatest._
 import org.threeten.extra.YearWeek
 
 import analytico.data.ViewCount.{ Combined, Live, Video }
@@ -15,7 +12,7 @@ import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
 
-class ViewCountTests extends FlatSpec with Matchers with EitherValues with PrivateMethodTester {
+class ViewCountTests extends TestSpec with CirceSpec[ViewCount] with YTApiMocks {
 
   val firstWeek: YearWeek = YearWeek.of(1900, 1)
   val viewCount: ViewCount = new ViewCount(firstWeek, ViewCount.Video, views = 1, estimatedMinutes = 1)
@@ -32,30 +29,11 @@ class ViewCountTests extends FlatSpec with Matchers with EitherValues with Priva
   )
   val showRepr: String = "ViewCount(yearWeek: 1900-W01, viewType: Video, views: 1, estimatedMinutes: 1, avg: 60s)"
 
-  def resultTable(rows: Seq[AnyRef]*): ResultTable = new ResultTable()
-    .setColumnHeaders(List(
-      new ColumnHeaders().setName("day"),
-      new ColumnHeaders().setName("liveOrOnDemand"),
-      new ColumnHeaders().setName("views"),
-      new ColumnHeaders().setName("estimatedMinutesWatched")
-    ).asJava)
-    .setRows(rows.map(_.asJava).asJava)
-
   def extractYearWeekMethod: PrivateMethod[YearWeek] = PrivateMethod[YearWeek]('extractYearWeek)
 
   def collectStatsMethod: PrivateMethod[(BigDecimal, BigDecimal)] = PrivateMethod[(BigDecimal, BigDecimal)]('collectStats)
 
-  "A ViewCount" should "serialize to Json correctly" in {
-    viewCount.asJson should ===(jsonViewCount)
-  }
-
-  it should "deserialize from Json correctly" in {
-    jsonViewCount.as[ViewCount].right.value should ===(viewCount)
-  }
-
-  it should "equal itself after reserialization" in {
-    viewCount.asJson.as[ViewCount].right.value should ===(viewCount)
-  }
+  "A Viewcount" should behave like circeTests(viewCount, jsonViewCount)
 
   it should "have a working Show implementation" in {
     Show[ViewCount].show(viewCount) should ===(showRepr)

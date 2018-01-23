@@ -2,25 +2,19 @@ package analytico
 package ui
 
 import scalafx.beans.property.BooleanProperty
+import scalafx.scene.control.Tab
+import scalafx.scene.layout.Pane
 
-import org.scalactic.CanEqual
-import org.scalatest._
-
-import analytico.ui.StatPane.YoutubeStatPane
+import analytico.ui.StatPane.{ NoStatsPane, YoutubeStatPane }
 import io.circe._
 import io.circe.generic.auto._
 import io.circe.syntax._
 
-class StatPaneTests extends FlatSpec with Matchers with EitherValues with PrivateMethodTester {
+class StatPaneTests extends TestSpec with CirceSpec[StatPane] with YTApiMocks {
 
-  private val youtubeStatsCanEqual: YoutubeStatPane CanEqual YoutubeStatPane = { (left, right) ⇒
-    left.credentialsName === right.credentialsName &&
-      left.displayName === right.displayName &&
-      left.channelId === right.channelId
-  }
+  def youtubeStats: YoutubeStatPane = new YoutubeStatPane("credentialsName", "displayName", "channelId", None, BooleanProperty(false))
 
-  val youtubeStats: YoutubeStatPane = new YoutubeStatPane("credentialsName", "displayName", "channelId", None, BooleanProperty(false))
-  val jsonYoutubeStats: Json = Json.obj(
+  def jsonYoutubeStats: Json = Json.obj(
     "credentials" → "credentialsName".asJson,
     "displayName" → "displayName".asJson,
     "channelId" → "channelId".asJson,
@@ -29,15 +23,35 @@ class StatPaneTests extends FlatSpec with Matchers with EitherValues with Privat
     "combined-stats" → false.asJson
   )
 
-  "A YoutubeStatPane" should "serialize to Json correctly" in {
-    youtubeStats.asJson should ===(jsonYoutubeStats)
+  "A YoutubeStatPane" should behave like circeTests(youtubeStats, jsonYoutubeStats, "YoutubeStatPane")
+
+  it should "invalidate correctly" in {
+    val ys = new YoutubeStatPane("credentialsName", "displayName", "channelId", Some(new MockAnalytics), BooleanProperty(false))
+    val prop = ys.unsavedMarker
+
+    ys.initialize(new Tab, None)
+
+    /* Zu Beginn: Nichts geändert. */
+    prop() shouldBe false
+    ys.isValid shouldBe true
+
+    ys.combinedStats() = true
+
+    prop() shouldBe true
+    ys.isValid shouldBe false
   }
 
-  it should "deserialize from Json correctly" in {
-    (jsonYoutubeStats.as[YoutubeStatPane].right.value should ===(youtubeStats)) (youtubeStatsCanEqual)
-  }
+  "A NoStatPane" should behave like circeTests(NoStatsPane, Json.obj(), "NoStatsPane")
 
-  it should "equal itself after reserialization" in {
-    (youtubeStats.asJson.as[YoutubeStatPane].right.value should ===(youtubeStats)) (youtubeStatsCanEqual)
+  it should "treat initialize as a no-op" in {
+    val tab1 = new Tab()
+    val tab2 = new Tab()
+    val pane = new Pane()
+
+    NoStatsPane.initialize(tab2, Some(pane))
+
+    pane.children.size() should ===(0)
+    tab2.text() should ===(tab1.text())
+    tab2.content() should ===(tab1.content())
   }
 }
