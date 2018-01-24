@@ -66,7 +66,12 @@ object Main extends JFXApp {
 
   def generateSheets(liveName: String, onDemandName: String, completedName: String, counts: Seq[ViewCount]): Unit = {
 
-    val columnHeaders = List("KW" → 5, "Aufrufe" → 10, "Durschnittliche Wiedergabedauer" → 10, "Total Zuschauerzeit" → 10).zipWithIndex
+    val columnHeaders = List(
+      "KW" → 5,
+      "Aufrufe" → 10,
+      "Durschnittliche Wiedergabedauer" → 10,
+      "Total Zuschauerzeit" → 10
+    ).zipWithIndex
 
     val wb = new XSSFWorkbook()
 

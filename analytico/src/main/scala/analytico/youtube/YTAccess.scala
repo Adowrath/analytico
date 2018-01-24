@@ -38,7 +38,8 @@ object YTAccess {
 
 /**
   * Ein Trait, der die Youtube Analytics-API typ- und scopesicher angibt.
-  * Vorübergehend nur ein Wrapper zum [[com.google.api.services.youtubeAnalytics.YouTubeAnalytics.Builder Builder]] der Google-Library.
+  * Vorübergehend nur ein Wrapper zum [[com.google.api.services.youtubeAnalytics.YouTubeAnalytics.Builder Builder]]
+  * der Google-Library.
   *
   * @since 29.11.2017
   * @version v1.0

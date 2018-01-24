@@ -8,7 +8,7 @@ import io.circe.{ Decoder, Encoder, Json }
   */
 trait CirceSpec[Parent] { self: TestSpec ⇒
 
-  def circeTests[T <: Parent](obj: ⇒ T, jsonRepr: Json, generalName: String = "")
+  def circeTests[T <: Parent](obj: T, jsonRepr: Json, generalName: String = "")
                              (implicit e1: Encoder[T], d1: Decoder[T],
                               e2: Encoder[Parent], d2: Decoder[Parent]): Unit = {
     it should "serialize to Json correctly" in {

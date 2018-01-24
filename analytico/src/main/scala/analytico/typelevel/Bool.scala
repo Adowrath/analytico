@@ -23,7 +23,8 @@ sealed trait Bool {
     *
     * @tparam Then  Rückgabetyp falls dies [[Bool.True]] ist.
     * @tparam Else  Rückgabetyp falls dies [[Bool.False]] ist.
-    * @tparam Upper Gemeinsamer Supertype von `Then` und `Else`. Wenn Dotty erscheint, wird dieser entfernt und mit `Then|Else` ersetzt.
+    * @tparam Upper Gemeinsamer Supertype von `Then` und `Else`.
+    *               Wenn Dotty erscheint, kann dieser entfernt und mit `Then|Else` ersetzt werden.
     */
   type If[Then <: Upper, Else <: Upper, Upper] <: Upper
   /** Eine Type-Level-Repräsentation des boolschen Not-Operators. */

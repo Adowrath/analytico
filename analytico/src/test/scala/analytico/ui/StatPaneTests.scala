@@ -12,9 +12,10 @@ import io.circe.syntax._
 
 class StatPaneTests extends TestSpec with CirceSpec[StatPane] with YTApiMocks {
 
-  def youtubeStats: YoutubeStatPane = new YoutubeStatPane("credentialsName", "displayName", "channelId", None, BooleanProperty(false))
+  val youtubeStats: YoutubeStatPane =
+    new YoutubeStatPane("credentialsName", "displayName", "channelId", None, BooleanProperty(false))
 
-  def jsonYoutubeStats: Json = Json.obj(
+  val jsonYoutubeStats: Json = Json.obj(
     "credentials" → "credentialsName".asJson,
     "displayName" → "displayName".asJson,
     "channelId" → "channelId".asJson,
@@ -25,21 +26,31 @@ class StatPaneTests extends TestSpec with CirceSpec[StatPane] with YTApiMocks {
 
   "A YoutubeStatPane" should behave like circeTests(youtubeStats, jsonYoutubeStats, "YoutubeStatPane")
 
-  it should "invalidate correctly" in {
-    val ys = new YoutubeStatPane("credentialsName", "displayName", "channelId", Some(new MockAnalytics), BooleanProperty(false))
-    val prop = ys.unsavedMarker
+  def invalidationCheck(value: Boolean, name: String, invalidator: YoutubeStatPane ⇒ BooleanProperty): Unit = {
+    it should s"invalidate $name correctly" in {
+      val analytics = new MockAnalytics(
+        List("1900-01-01", "LIVE", (1: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
+        List("1900-01-01", "ON_DEMAND", (99: BigDecimal).bigDecimal, (995: BigDecimal).bigDecimal)
+      )
+      val ys = new YoutubeStatPane("credentialsName", "displayName", "channelId", Some(analytics), BooleanProperty(false))
+      val prop = ys.unsavedMarker
 
-    ys.initialize(new Tab, None)
+      ys.initialize(new Tab, None)
 
-    /* Zu Beginn: Nichts geändert. */
-    prop() shouldBe false
-    ys.isValid shouldBe true
+      /* Zu Beginn: Nichts geändert. */
+      prop() shouldBe false
+      ys.isValid shouldBe true
 
-    ys.combinedStats() = true
+      invalidator(ys)() = value
 
-    prop() shouldBe true
-    ys.isValid shouldBe false
+      prop() shouldBe true
+      ys.isValid shouldBe false
+    }
   }
+
+  it should behave like invalidationCheck(value = false, "live", _.liveStats)
+  it should behave like invalidationCheck(value = true, "video", _.videoStats)
+  it should behave like invalidationCheck(value = true, "combined", _.combinedStats)
 
   "A NoStatPane" should behave like circeTests(NoStatsPane, Json.obj(), "NoStatsPane")
 

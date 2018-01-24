@@ -57,8 +57,10 @@ object YTAuth {
     val clientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecretReader)
 
     // Checks that the defaults have been replaced (Default = "Enter X here").
-    if(clientSecrets.getDetails.getClientId.startsWith("Enter") || clientSecrets.getDetails.getClientSecret.startsWith("Enter ")) {
-      System.out.println("Enter Client ID and Secret from https://console.developers.google.com/project/_/apiui/credential " + "into src/main/resources/client_secrets.json")
+    if(clientSecrets.getDetails.getClientId.startsWith("Enter")
+      || clientSecrets.getDetails.getClientSecret.startsWith("Enter ")) {
+      System.out.println("Enter Client ID and Secret from " +
+        "https://console.developers.google.com/project/_/apiui/credential into src/main/resources/client_secrets.json")
       System.exit(1)
     }
 

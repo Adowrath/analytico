@@ -29,9 +29,11 @@ class ViewCountTests extends TestSpec with CirceSpec[ViewCount] with YTApiMocks 
   )
   val showRepr: String = "ViewCount(yearWeek: 1900-W01, viewType: Video, views: 1, estimatedMinutes: 1, avg: 60s)"
 
-  def extractYearWeekMethod: PrivateMethod[YearWeek] = PrivateMethod[YearWeek]('extractYearWeek)
+  def extractYearWeekMethod: PrivateMethod[YearWeek] =
+    PrivateMethod[YearWeek]('extractYearWeek)
 
-  def collectStatsMethod: PrivateMethod[(BigDecimal, BigDecimal)] = PrivateMethod[(BigDecimal, BigDecimal)]('collectStats)
+  def collectStatsMethod: PrivateMethod[(BigDecimal, BigDecimal)] =
+    PrivateMethod[(BigDecimal, BigDecimal)]('collectStats)
 
   "A Viewcount" should behave like circeTests(viewCount, jsonViewCount)
 
@@ -59,7 +61,7 @@ class ViewCountTests extends TestSpec with CirceSpec[ViewCount] with YTApiMocks 
 
   it should "return a three-element Seq with a simple row" in {
     val table = resultTable(
-      List("1900-01-01", "LIVE", (1: BigDecimal).bigDecimal, (1: BigDecimal).bigDecimal)
+      List[AnyRef]("1900-01-01", "LIVE", (1: BigDecimal).bigDecimal, (1: BigDecimal).bigDecimal)
     )
     ViewCount fromResults table should ===(Seq(
       ViewCount(firstWeek, Live, 1, 1),
@@ -70,11 +72,11 @@ class ViewCountTests extends TestSpec with CirceSpec[ViewCount] with YTApiMocks 
 
   it should "return a three-element Seq with multiple rows in one week and one category" in {
     val table = resultTable(
-      List("1900-01-01", "LIVE", (1: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
-      List("1900-01-01", "LIVE", (2: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
-      List("1900-01-02", "LIVE", (3: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
-      List("1900-01-03", "LIVE", (4: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
-      List("1900-01-04", "LIVE", (5: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal)
+      List[AnyRef]("1900-01-01", "LIVE", (1: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
+      List[AnyRef]("1900-01-01", "LIVE", (2: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
+      List[AnyRef]("1900-01-02", "LIVE", (3: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
+      List[AnyRef]("1900-01-03", "LIVE", (4: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
+      List[AnyRef]("1900-01-04", "LIVE", (5: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal)
     )
     ViewCount fromResults table should ===(Seq(
       ViewCount(firstWeek, Live, 15, 25),
@@ -85,8 +87,8 @@ class ViewCountTests extends TestSpec with CirceSpec[ViewCount] with YTApiMocks 
 
   it should "combine stats accross two categories correctly" in {
     val table = resultTable(
-      List("1900-01-01", "LIVE", (1: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
-      List("1900-01-01", "ON_DEMAND", (99: BigDecimal).bigDecimal, (995: BigDecimal).bigDecimal)
+      List[AnyRef]("1900-01-01", "LIVE", (1: BigDecimal).bigDecimal, (5: BigDecimal).bigDecimal),
+      List[AnyRef]("1900-01-01", "ON_DEMAND", (99: BigDecimal).bigDecimal, (995: BigDecimal).bigDecimal)
     )
     ViewCount fromResults table should ===(Seq(
       ViewCount(firstWeek, Live, 1, 5),

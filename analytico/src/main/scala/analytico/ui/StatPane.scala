@@ -73,7 +73,8 @@ object StatPane {
     lazy val actualAnalytics: Future[YouTubeAnalytics] = analytics match {
       case Some(a) ⇒ Future.successful(a)
       case None ⇒
-        YTAuth.authorize[AnalyticsReadOnly](credentialsName)._2.map(_.buildAnalytics("analytico-relogin"))
+        val (_, api) = YTAuth.authorize[AnalyticsReadOnly](credentialsName)
+        api map (_.buildAnalytics("analytico-relogin"))
     }
 
     // TODO: Configurable dates.
@@ -164,7 +165,7 @@ object StatPane {
   object YoutubeStatPane {
     def apply(name: String, unsavedMarker: BooleanProperty): (Cancelable, Future[YoutubeStatPane]) = {
       val sanitizedName =
-        f"${s"analytico${name.replaceAll("[^\\w]", "")}".take(22)}%s${Random.nextInt().toHexString}%8s".replace(' ', '0').take(30)
+        f"${s"analytico${name.replaceAll("[^\\w]", "")}".take(22)}%s${Random.nextInt()}%08x"
 
       val (receiver, auth) = YTAuth.authorize[AnalyticsReadOnly && YoutubeReadOnly](sanitizedName)
       val analytics = auth map { _ buildAnalytics "analytico" }
@@ -186,12 +187,15 @@ object StatPane {
     }
 
     implicit val youtubeStatPaneEncoder: Encoder[YoutubeStatPane] =
-      Encoder.forProduct6("credentials", "displayName", "channelId", "live-stats", "video-stats", "combined-stats") { ysp ⇒
-        (ysp.credentialsName, ysp.displayName, ysp.channelId, ysp.liveStats(), ysp.videoStats(), ysp.combinedStats())
+      Encoder.forProduct6("credentials", "displayName", "channelId", "live-stats", "video-stats", "combined-stats") {
+        y ⇒
+          (y.credentialsName, y.displayName, y.channelId, y.liveStats(), y.videoStats(), y.combinedStats())
       }
     implicit val youtubeStatPaneDecoder: Decoder[YoutubeStatPane] =
       Decoder.forProduct6("credentials", "displayName", "channelId", "live-stats", "video-stats", "combined-stats") {
-        (credentialsName: String, displayName: String, channelId: String, liveStats: Boolean, videoStats: Boolean, combinedStats: Boolean) ⇒
+        (credentialsName: String, displayName: String, channelId: String,
+         liveStats: Boolean, videoStats: Boolean, combinedStats: Boolean) ⇒
+
           val ysp = new YoutubeStatPane(credentialsName, displayName, channelId, None, BooleanProperty(false))
           ysp.liveStats() = liveStats
           ysp.videoStats() = videoStats

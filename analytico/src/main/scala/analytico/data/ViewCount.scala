@@ -24,9 +24,11 @@ import io.circe.generic.semiauto._
   * @param views            die View-Zahlen.
   * @param estimatedMinutes die von YT geschätzte Zahl der geschauten Minuten.
   */
-final case class ViewCount(yearWeek: YearWeek, viewType: ViewCount.ViewType, views: BigDecimal, estimatedMinutes: BigDecimal) {
+final case class ViewCount(yearWeek: YearWeek, viewType: ViewCount.ViewType,
+                           views: BigDecimal, estimatedMinutes: BigDecimal) {
   override def toString: String =
-    s"ViewCount(yearWeek: $yearWeek, viewType: $viewType, views: $views, estimatedMinutes: $estimatedMinutes, avg: ${Try(averageDuration.toString()).getOrElse("{NaN}")}s)"
+    s"ViewCount(yearWeek: $yearWeek, viewType: $viewType, views: $views, " +
+      s"estimatedMinutes: $estimatedMinutes, avg: ${Try(averageDuration.toString()).getOrElse("{NaN}")}s)"
 
   /** Die ungefähre Zuschauzeit in Sekunden. */
   def averageDuration: BigDecimal = estimatedMinutes * 60 / views

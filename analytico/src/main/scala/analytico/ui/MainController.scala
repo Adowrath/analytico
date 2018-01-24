@@ -51,7 +51,8 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     *
     * @return returns the new button
     */
-  def apiButton(buttonName: String, tab: Tab)(handler: (String, BooleanProperty) ⇒ (Cancelable, Future[StatPane])): Button = button(buttonName) {
+  def apiButton(buttonName: String, tab: Tab)
+               (handler: (String, BooleanProperty) ⇒ (Cancelable, Future[StatPane])): Button = button(buttonName) {
     disable(waiting = true)
     val (cancelable, pane) = handler(tab.text(), unsavedChanges)
     currentCancelable() = Some(cancelable)
