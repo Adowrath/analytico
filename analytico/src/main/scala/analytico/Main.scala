@@ -1,56 +1,84 @@
 package analytico
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.reflect.runtime.universe._
+import scala.util.Try
 import scalafx.Includes._
 import scalafx.application.{ JFXApp, Platform }
 import scalafx.scene.Scene
 import scalafx.scene.image.Image
-import scalafxml.core.{ FXMLView, NoDependencyResolver }
-import java.io.{ File, FileOutputStream, IOException }
+import scalafx.stage.FileChooser.ExtensionFilter
+import scalafx.stage.{ FileChooser, Stage }
+import scalafxml.core.{ DependenciesByType, FXMLView }
+import java.io.{ File, FileOutputStream }
+import java.nio.file.{ Files, Paths }
 import java.time.{ DayOfWeek, LocalDate }
 
-import com.google.api.services.youtubeAnalytics.YouTubeAnalytics
-import com.google.api.services.youtubeAnalytics.model.ResultTable
 import org.apache.poi.ss.usermodel.{ CellStyle, HorizontalAlignment, Workbook }
 import org.apache.poi.xssf.usermodel.{ XSSFCellStyle, XSSFWorkbook }
 import org.threeten.extra.YearWeek
 
 import analytico.data.ViewCount
-import analytico.youtube.YTAuth
-import analytico.youtube.YTScope._
+import analytico.ui.StatPane
+import analytico.ui.StatPane._
+import io.circe.syntax._
+import io.circe.jawn._
 
 object Main extends JFXApp {
+
+  val standardFileName = "analytico.json"
 
   stage = new JFXApp.PrimaryStage() {
     title = "Test window"
     icons += new Image(getClass.getResourceAsStream("/icon.png"))
-    scene = new Scene(FXMLView(getClass.getResource("/main.fxml"), NoDependencyResolver))
+    scene = new Scene(FXMLView(getClass.getResource("/main.fxml"), new DependenciesByType(Map(
+      typeOf[Map[String, StatPane]] → loadData()
+    ))))
     sizeToScene()
     Platform.runLater {
       minHeight = height()
       minWidth = width()
     }
-    //TODO SAVE MECHANISM
-    // onCloseRequest = _.consume()
   }
 
-  /**
-    * Kleiner Test der APIs.
-    */
-  def example(dateRange: (String, String)): Unit = {
-    val (_, api) = YTAuth.authorize[YoutubeReadOnly && AnalyticsReadOnly]("analyticsAndYoutube")
+  def loadData(): Map[String, StatPane] = {
+    val path = Paths.get(standardFileName)
+    if(Files exists path) {
+      val decodeResult = decodeFile[Map[String, StatPane]](path.toFile)
 
-    for(api ← api) {
-      val analytics = api buildAnalytics "test"
-      val youtube = api youtubeData "test"
-
-      for(channels <- youtube.channels.mine.list(_.items(_.id, _.snippet(_.title, _.thumbnails(_.high))))) {
-        val channelId = channels.getItems.get(0).getId
-        val res = executeViewsOverTimeQuery(dateRange, analytics, channelId)
-        val counts = ViewCount.fromResults(res)
-
-        generateSheets("StarTube Live", "StarTube Video", "Total -- YT", counts)
+      decodeResult match {
+        case Right(res) ⇒
+          res
+        case Left(err) ⇒
+          println(err)
+          Map()
       }
+    } else {
+      Map()
+    }
+  }
+
+  def saveData(panes: collection.Map[String, StatPane], stage: Stage): Boolean = {
+    val fileChooser = new FileChooser()
+
+    fileChooser.title = "Speicherplatz auswählen."
+    fileChooser.extensionFilters ++= Seq(
+      new ExtensionFilter("JSON-Dateien", "*.json"),
+      new ExtensionFilter("Alle Dateien", "*.*")
+    )
+    fileChooser.initialFileName = standardFileName
+    fileChooser.initialDirectory = Paths.get(".").toFile
+
+    Option(fileChooser.showSaveDialog(stage)) match {
+      case Some(file) ⇒
+        val bw = Files.newBufferedWriter(file.toPath)
+        Try {
+          val code = panes.asJson.spaces2
+          bw.write(code)
+          bw.close()
+          true
+        } getOrElse false
+      case None ⇒
+        false
     }
   }
 
@@ -147,28 +175,6 @@ object Main extends JFXApp {
   @inline
   private[this]
   def toExcelTime(inSeconds: BigDecimal): Double = (inSeconds / 60 / 60 / 24).doubleValue
-
-  /**
-    * Retrieve the views and unique viewers per day for the channel.
-    *
-    * @param analytics The service object used to access the Analytics API.
-    * @param id        The channel ID from which to retrieve data.
-    *
-    * @return The API response.
-    *
-    * @throws IOException if an API error occurred.
-    */
-  @throws[IOException]
-  private[this]
-  def executeViewsOverTimeQuery(dateRange: (String, String), analytics: YouTubeAnalytics, id: String): ResultTable = {
-    analytics.reports
-      .query("channel==" + id,
-        dateRange._1,
-        dateRange._2,
-        "views,estimatedMinutesWatched")
-      .setDimensions("day,liveOrOnDemand")
-      .execute
-  }
 
   /**
     * Gibt ein Tuple aus Anfangs- und Enddatum eines ganzen Jahres zurück,

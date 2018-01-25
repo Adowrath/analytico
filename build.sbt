@@ -1,7 +1,7 @@
 lazy val commonSettings = Seq(
   organization := "com.github.adowrath",
   description := "Analytico - Analytics for you",
-  version := "0.1",
+  version := "0.1.0-SNAPSHOT",
   scalaVersion := "2.12.4",
   scalacOptions ++= Seq(
     "-target:jvm-1.8",

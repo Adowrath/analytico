@@ -23,11 +23,10 @@ import com.google.api.client.util.store.FileDataStoreFactory
   * @version 1.0
   */
 object YTAuth {
-  private[this] val credentialsDir = ".oauth-credentials"
   private[this] val httpTransport = new NetHttpTransport()
   private[this] val jsonFactory = new JacksonFactory()
 
-  private[this] val userHome = System.getProperty("user.home")
+  private[this] val username = System.getProperty("user.name")
 
   /**
     * Gibt ein für den angegebenen Scope authorisiertes Credential zurück.
@@ -65,7 +64,7 @@ object YTAuth {
     }
 
 
-    val credentialsFile = new File(userHome + "/" + credentialsDir)
+    val credentialsFile = new File(s".data/$username/.credentials")
     // Falls eine Re-Authorisierung gewünscht ist.
     if(reauthorize)
       Files.deleteIfExists(credentialsFile.toPath.resolve(datastoreName))

@@ -5,7 +5,6 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.Try
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.property.{ BooleanProperty, ObjectProperty }
@@ -15,22 +14,28 @@ import scalafx.scene.control._
 import scalafx.scene.layout._
 import scalafx.stage._
 import scalafxml.core.macros.sfxml
-import java.nio.file.{ Files, Paths }
-import javafx.stage.FileChooser.ExtensionFilter
 
 import org.scalactic.TypeCheckedTripleEquals._
 
+import analytico.Main._
 import analytico.ui.StatPane._
-import io.circe.syntax._
 
 @sfxml
-class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace: VBox) {
+class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace: VBox, loadedData: Map[String, StatPane]) {
 
   /* Constants */
   lazy val stage: Stage = tabPane.getScene.getWindow.asInstanceOf[javafx.stage.Stage]
   val errorShadow = "-fx-effect: dropshadow(two-pass-box, red, 10, 0.3, 0, 0)"
   val panes: mutable.Map[String, StatPane] = mutable.Map.empty
   val currentCancelable: ObjectProperty[Option[Cancelable]] = ObjectProperty(None)
+
+  /* Initialization */
+  for((name, pane) ← loadedData) {
+    panes(name) = pane
+    val tab = new Tab
+    tab.text = name
+    tabPane += tab
+  }
 
   /* Properties */
   def currentTab: Tab = tabPane.selectionModel().getSelectedItem
@@ -186,29 +191,10 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
   }
 
   def save(): Boolean = {
-    val fileChooser = new FileChooser()
-
-    fileChooser.title = "Speicherplatz auswählen."
-    fileChooser.extensionFilters ++= Seq(
-      new ExtensionFilter("JSON-Dateien", "*.json"),
-      new ExtensionFilter("Alle Dateien", "*.*")
-    )
-    fileChooser.initialFileName = "analytico.json"
-    fileChooser.initialDirectory = Paths.get(System.getProperty("user.dir")).toFile
-
-    Option(fileChooser.showSaveDialog(stage)) match {
-      case Some(file) ⇒
-        val bw = Files.newBufferedWriter(file.toPath)
-        Try {
-          val code = panes.asJson.spaces2
-          bw.write(code)
-          bw.close()
-          unsavedChanges() = false
-          true
-        } getOrElse false
-      case None ⇒
-        false
-    }
+    val saved = saveData(panes, stage)
+    if(saved)
+      unsavedChanges() = false
+    saved
   }
 
   Platform.runLater {

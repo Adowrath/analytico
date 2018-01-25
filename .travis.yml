@@ -8,8 +8,9 @@ jdk:
 #  missing javafx, so a no-build.
 matrix:
   fast_finish: true
-  allow_failures:
-  - jdk: oraclejdk9
+# Seems to work, so for now, lets use it officially.
+#  allow_failures:
+#  - jdk: oraclejdk9
 
 before_script:
   - "export DISPLAY=:99.0"

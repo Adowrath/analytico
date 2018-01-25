@@ -4,7 +4,8 @@ package ui
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.Random
+import scala.util.{ Random, Success }
+import scalafx.application.Platform
 import scalafx.beans.property.{ BooleanProperty, ObjectProperty }
 import scalafx.collections.ObservableBuffer
 import scalafx.scene.Node
@@ -74,7 +75,9 @@ object StatPane {
       case Some(a) ⇒ Future.successful(a)
       case None ⇒
         val (_, api) = YTAuth.authorize[AnalyticsReadOnly](credentialsName)
-        api map (_.buildAnalytics("analytico-relogin"))
+        api andThen {
+          case Success(_) ⇒ unsavedMarker() = true
+        } map (_.buildAnalytics("analytico-relogin"))
     }
 
     // TODO: Configurable dates.
@@ -111,31 +114,33 @@ object StatPane {
       }
 
       data.foreach { counts ⇒
-        tab.content = {
-          val tabView = new TableView[ViewCount](ObservableBuffer {
-            counts.filter {
-              _.viewType match {
-                case Live ⇒ liveStats()
-                case Video ⇒ videoStats()
-                case Combined ⇒ combinedStats()
+        Platform.runLater {
+          tab.content = {
+            val tabView = new TableView[ViewCount](ObservableBuffer {
+              counts.filter {
+                _.viewType match {
+                  case Live ⇒ liveStats()
+                  case Video ⇒ videoStats()
+                  case Combined ⇒ combinedStats()
+                }
               }
-            }
-          })
-          tabView.editable = false
+            })
+            tabView.editable = false
 
-          /** Falls 2 oder mehr aktiv sind */
-          if((liveStats() && (videoStats() || combinedStats())) || videoStats() && combinedStats()) {
-            tabView.columns.add(
-              column("Art") { _.viewType }
+            /** Falls 2 oder mehr aktiv sind */
+            if((liveStats() && (videoStats() || combinedStats())) || videoStats() && combinedStats()) {
+              tabView.columns.add(
+                column("Art") { _.viewType }
+              )
+            }
+            tabView.columns.addAll(
+              column("KW") { _.yearWeek.getWeek },
+              column("Aufrufe") { _.views.toBigInt },
+              column("Durschnittliche Wiedergabedauer") { vc ⇒ secondsToTime(vc.averageDuration.toBigInt()) },
+              column("Total Zuschauerzeit") { vc ⇒ secondsToTime(vc.estimatedMinutes.toBigInt() * 60) }
             )
+            tabView
           }
-          tabView.columns.addAll(
-            column("KW") { _.yearWeek.getWeek },
-            column("Aufrufe") { _.views.toBigInt },
-            column("Durschnittliche Wiedergabedauer") { vc ⇒ secondsToTime(vc.averageDuration.toBigInt()) },
-            column("Total Zuschauerzeit") { vc ⇒ secondsToTime(vc.estimatedMinutes.toBigInt() * 60) }
-          )
-          tabView
         }
       }
 
