@@ -5,6 +5,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.{ Failure, Success }
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.property.{ BooleanProperty, ObjectProperty }
@@ -36,6 +37,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     tab.text = name
     tabPane += tab
   }
+  fillTab(tabPane.tabs.get(0))
 
   /* Properties */
   def currentTab: Tab = tabPane.selectionModel().getSelectedItem
@@ -97,7 +99,6 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     apiButton("Mit YouTube anmelden", tab) {
       YoutubeStatPane.apply
     }
-    // TODO: Andere APIs
   ) ++ commonButtons(tab)
 
   def commonButtons(tab: Tab): Seq[Button] = Seq(
@@ -109,19 +110,29 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     }
   )
 
-  /* Listeners */
-  tabPane.selectionModel().selectedItemProperty().onChange { (_, _, newTab) ⇒
-    panes.get(newTab.getText) match {
+  def moveTab(tab: Tab, offset: Int): Unit = {
+    val oldIndex = tabPane.tabs.indexOf(tab)
+    tabPane.tabs -= tab
+    tabPane.tabs.add(oldIndex + offset, tab)
+    tabPane.selectionModel().select(tab)
+    unsavedChanges() = true
+  }
+
+  def fillTab(tab: Tab): Unit = {
+    panes.get(tab.text()) match {
       case None | Some(NoStatsPane) ⇒
-        buttonSpace.children = uninitializedButtons(newTab)
+        buttonSpace.children = uninitializedButtons(tab)
 
       case Some(pane) ⇒
         buttonSpace.children = Nil
-        pane.initialize(newTab, Some(buttonSpace))
-        buttonSpace.children ++= commonButtons(newTab).map(_.delegate)
+        pane.initialize(tab, Some(buttonSpace))
+        buttonSpace.children ++= commonButtons(tab).map(_.delegate)
         ()
     }
   }
+
+  /* Listeners */
+  tabPane.selectionModel().selectedItemProperty().onChange((_,_,newTab) ⇒ fillTab(newTab))
 
   def renameTab(tab: Tab): Unit = {
     val oldName = tab.text()
@@ -191,10 +202,12 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
   }
 
   def save(): Boolean = {
-    val saved = saveData(panes, stage)
-    if(saved)
-      unsavedChanges() = false
-    saved
+    saveData(panes, stage) match {
+      case Success(_) ⇒
+        unsavedChanges() = false
+        true
+      case Failure(_) ⇒ ???
+    }
   }
 
   Platform.runLater {

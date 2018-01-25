@@ -127,7 +127,12 @@ lazy val miscDependencies = Seq(
     * ScalaTest dependencies.
     */
   "org.scalactic" %% "scalactic" % "3.0.4",
-  "org.scalatest" %% "scalatest" % "3.0.4" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.4" % "test",
+
+  /**
+    * Better Files.
+    */
+  "com.github.pathikrit" %% "better-files" % "3.4.0"
 )
 
 lazy val excelDependencies = Seq(
@@ -152,7 +157,8 @@ lazy val root = (project in file("."))
   .settings(
     commonSettings,
     name := "analytico-root",
-    Compile / run := (analytico / Compile / run).evaluated
+    Compile / run := (analytico / Compile / run).evaluated,
+    cleanFiles += baseDirectory.value / ".data"
   )
   .aggregate(analytico, macros)
 

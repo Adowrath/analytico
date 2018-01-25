@@ -9,3 +9,6 @@
 
 # XLSX Files generated from the Apache POI library.
 *.xlsx
+
+# The .data directory is for application data.
+.data

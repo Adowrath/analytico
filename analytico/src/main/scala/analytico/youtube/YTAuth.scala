@@ -15,6 +15,8 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 
+import analytico.Main.dataFolder
+
 /**
   * Enthält die Methode zur Authentifizierung mit der YT-API, `authorize`.
   *
@@ -25,8 +27,6 @@ import com.google.api.client.util.store.FileDataStoreFactory
 object YTAuth {
   private[this] val httpTransport = new NetHttpTransport()
   private[this] val jsonFactory = new JacksonFactory()
-
-  private[this] val username = System.getProperty("user.name")
 
   /**
     * Gibt ein für den angegebenen Scope authorisiertes Credential zurück.
@@ -64,13 +64,13 @@ object YTAuth {
     }
 
 
-    val credentialsFile = new File(s".data/$username/.credentials")
+    val credentialsFile = dataFolder / ".credentials"
     // Falls eine Re-Authorisierung gewünscht ist.
     if(reauthorize)
-      Files.deleteIfExists(credentialsFile.toPath.resolve(datastoreName))
+      (credentialsFile / datastoreName).delete(swallowIOExceptions = true)
 
     // This creates the credentials datastore at ~/.oauth-credentials/${datastoreName}
-    val fileDataStoreFactory = new FileDataStoreFactory(credentialsFile)
+    val fileDataStoreFactory = new FileDataStoreFactory(credentialsFile.toJava)
     val datastore = fileDataStoreFactory.getDataStore[StoredCredential](datastoreName)
 
     val flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, clientSecrets, scopes.scopes.asJava)

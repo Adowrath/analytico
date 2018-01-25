@@ -104,7 +104,6 @@ object StatPane {
 
       type T = ViewCount
 
-      // TODO: Dies ist momentan nur für immutable Klassen!
       def column[R](name: String)(valueFactory: T ⇒ R): TableColumn[T, R] = {
         val col = new TableColumn[T, R](name)
         col.cellValueFactory = { c ⇒

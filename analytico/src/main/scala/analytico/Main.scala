@@ -6,11 +6,9 @@ import scalafx.Includes._
 import scalafx.application.{ JFXApp, Platform }
 import scalafx.scene.Scene
 import scalafx.scene.image.Image
-import scalafx.stage.FileChooser.ExtensionFilter
-import scalafx.stage.{ FileChooser, Stage }
+import scalafx.stage.Stage
 import scalafxml.core.{ DependenciesByType, FXMLView }
-import java.io.{ File, FileOutputStream }
-import java.nio.file.{ Files, Paths }
+import java.io.FileOutputStream
 import java.time.{ DayOfWeek, LocalDate }
 
 import org.apache.poi.ss.usermodel.{ CellStyle, HorizontalAlignment, Workbook }
@@ -20,12 +18,11 @@ import org.threeten.extra.YearWeek
 import analytico.data.ViewCount
 import analytico.ui.StatPane
 import analytico.ui.StatPane._
-import io.circe.syntax._
+import better.files._
 import io.circe.jawn._
+import io.circe.syntax._
 
 object Main extends JFXApp {
-
-  val standardFileName = "analytico.json"
 
   stage = new JFXApp.PrimaryStage() {
     title = "Test window"
@@ -41,9 +38,8 @@ object Main extends JFXApp {
   }
 
   def loadData(): Map[String, StatPane] = {
-    val path = Paths.get(standardFileName)
-    if(Files exists path) {
-      val decodeResult = decodeFile[Map[String, StatPane]](path.toFile)
+    if(defaultFile.exists) {
+      val decodeResult = decodeFile[Map[String, StatPane]](defaultFile.toJava)
 
       decodeResult match {
         case Right(res) ⇒
@@ -57,30 +53,15 @@ object Main extends JFXApp {
     }
   }
 
-  def saveData(panes: collection.Map[String, StatPane], stage: Stage): Boolean = {
-    val fileChooser = new FileChooser()
-
-    fileChooser.title = "Speicherplatz auswählen."
-    fileChooser.extensionFilters ++= Seq(
-      new ExtensionFilter("JSON-Dateien", "*.json"),
-      new ExtensionFilter("Alle Dateien", "*.*")
-    )
-    fileChooser.initialFileName = standardFileName
-    fileChooser.initialDirectory = Paths.get(".").toFile
-
-    Option(fileChooser.showSaveDialog(stage)) match {
-      case Some(file) ⇒
-        val bw = Files.newBufferedWriter(file.toPath)
-        Try {
-          val code = panes.asJson.spaces2
-          bw.write(code)
-          bw.close()
-          true
-        } getOrElse false
-      case None ⇒
-        false
+  def saveData(panes: collection.Map[String, StatPane], stage: Stage): Try[Unit] = Try {
+    for(bw ← defaultFile.bufferedWriter) {
+      bw.write(panes.asJson.spaces2)
     }
   }
+
+  def username = System.getProperty("user.name")
+  def dataFolder: File = file".data/$username"
+  def defaultFile: File = dataFolder / "analytico.json"
 
   /** Ein kleiner Wrapper für eine lesbarere Syntax. Sollte 0 Overhead ausmachen! */
   implicit class WorkbookDecorator(val wb: Workbook) extends AnyVal {
@@ -168,7 +149,7 @@ object Main extends JFXApp {
     wb.write(fileOut)
     fileOut.close()
 
-    java.awt.Desktop.getDesktop.open(new File("workbook.xlsx"))
+    java.awt.Desktop.getDesktop.open(file"workbook.xlsx".toJava)
   }
 
   /** Wandelt eine Zeitangabe in Sekunden in die Darstellung von Excel um. */
