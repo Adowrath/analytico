@@ -59,8 +59,10 @@ object Main extends JFXApp {
     }
   }
 
-  def username = System.getProperty("user.name")
+  def username: String = System.getProperty("user.name")
+
   def dataFolder: File = file".data/$username"
+
   def defaultFile: File = dataFolder / "analytico.json"
 
   /** Ein kleiner Wrapper für eine lesbarere Syntax. Sollte 0 Overhead ausmachen! */

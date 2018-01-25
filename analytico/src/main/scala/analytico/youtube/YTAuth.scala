@@ -4,8 +4,7 @@ package youtube
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import java.io.{ File, InputStreamReader }
-import java.nio.file.Files
+import java.io.InputStreamReader
 
 import com.google.api.client.auth.oauth2.StoredCredential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp

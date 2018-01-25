@@ -8,7 +8,7 @@ import scala.concurrent.Future
 import scala.util.{ Failure, Success }
 import scalafx.Includes._
 import scalafx.application.Platform
-import scalafx.beans.property.{ BooleanProperty, ObjectProperty }
+import scalafx.beans.property.{ BooleanProperty, ObjectProperty, ReadOnlyIntegerProperty }
 import scalafx.scene._
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
@@ -41,6 +41,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
 
   /* Properties */
   def currentTab: Tab = tabPane.selectionModel().getSelectedItem
+  def currentIdx: ReadOnlyIntegerProperty = tabPane.selectionModel().selectedIndexProperty()
 
   def nodesToDisable: Seq[Node] =
     buttonSpace.children.map(n ⇒ n: Node).dropRight(1) :+ tabPane
@@ -95,19 +96,27 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
   }
 
   /* UI relevant. */
-  def uninitializedButtons(tab: Tab): Seq[Button] = Seq(
+  def uninitializedButtons(tab: Tab): Seq[Node] = Seq(
     apiButton("Mit YouTube anmelden", tab) {
       YoutubeStatPane.apply
     }
   ) ++ commonButtons(tab)
 
-  def commonButtons(tab: Tab): Seq[Button] = Seq(
+  def commonButtons(tab: Tab): Seq[Node] = Seq(
     button("Umbenennen") {
       renameTab(tab)
     },
     button("Abbrechen") {
       stopWaiting()
-    }
+    },
+    hbox(
+      button("<-", currentIdx === 0) {
+        moveTab(tab, -1)
+      },
+      button("->", currentIdx === tabPane.tabs.size() - 1) {
+        moveTab(tab, +1)
+      }
+    )
   )
 
   def moveTab(tab: Tab, offset: Int): Unit = {
@@ -227,8 +236,9 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
 
         result match {
           case Some(`Save`) ⇒
-            if(!save())
+            if(!save()) {
               event.consume()
+            }
           case Some(`Close`) ⇒
             ()
           case Some(_) | None ⇒

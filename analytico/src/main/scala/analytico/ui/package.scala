@@ -2,7 +2,11 @@ package analytico
 
 import scalafx.Includes.handle
 import scalafx.beans.property.BooleanProperty
+import scalafx.beans.value.ObservableValue
+import scalafx.scene.Node
 import scalafx.scene.control.{ Button, CheckBox }
+import scalafx.scene.layout.HBox
+import java.lang.{ Boolean ⇒ JLBoolean }
 
 import org.scalactic.TypeCheckedTripleEquals._
 
@@ -20,12 +24,26 @@ package object ui {
     *
     * @return a button with the specified handler
     */
-  def button[R](name: String, disabled: BooleanProperty = null)(handler: ⇒ R): Button = {
+  def button[R](name: String, disabled: ObservableValue[Boolean, JLBoolean] = null)(handler: ⇒ R): Button = {
     val b = new Button(name)
     if(disabled !== null)
       b.disable <== disabled
     b.onAction = handle(handler)
     b
+  }
+
+  /**
+    * Constructs a simple [[HBox]] out of the given set of nodes.
+    * Has no special property but to avoid anonymous subclasses.
+    *
+    * @param children the children of the to-be-constructed hbox
+    *
+    * @return a fresh hbox
+    */
+  def hbox(children: Node*): HBox = {
+    val hb = new HBox()
+    hb.children = children
+    hb
   }
 
   /**
