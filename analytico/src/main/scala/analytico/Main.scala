@@ -42,6 +42,7 @@ object Main extends JFXApp {
 
   def uncaughtError(t: Thread, th: Throwable): Unit = {
     th.printStackTrace()
+    println(t)
 
     val dialog = new Alert(AlertType.Error)
     import dialog._

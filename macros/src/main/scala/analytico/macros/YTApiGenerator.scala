@@ -2,8 +2,8 @@ package analytico
 package macros
 
 import scala.annotation.{ StaticAnnotation, compileTimeOnly }
-import scala.collection.mutable
 import scala.collection.immutable.Seq
+import scala.collection.mutable
 import scala.meta._
 
 object YTApiGenerator {
@@ -74,7 +74,6 @@ object YTApiGenerator {
           }"""
 
     println(result)
-//    println(result.structure)
 
     result
   }
@@ -108,12 +107,18 @@ object YTApiGenerator {
       case q"scala.Symbol(${symbolName @ Lit.String(_)})( $inner ).$methodName" ⇒
         (symbolName, methodName, splitTree(inner) :: Nil)
 
-        // IntelliJ
+      // IntelliJ
 
       case Term.ApplyUnary(Term.Name(methodName), Term.Apply(Term.Select(Term.Name("scala"), Term.Name("Symbol")), Seq(Lit.String(symbolName)))) ⇒
         (Lit.String(symbolName.drop(1)), Term.Name(s"unary_$methodName"), Nil)
       case
-        Term.ApplyUnary(Term.Name(methodName),Term.Apply(Term.Apply(Term.Select(Term.Name("scala"), Term.Name("Symbol")), Seq(Lit.String(symbolName))), Seq(Term.Block(inners)))) ⇒
+        Term.ApplyUnary(
+          Term.Name(methodName),
+          Term.Apply(
+            Term.Apply(Term.Select(Term.Name("scala"), Term.Name("Symbol")), Seq(Lit.String(symbolName))),
+            Seq(Term.Block(inners))
+          )
+        ) ⇒
         (Lit.String(symbolName.drop(1)), Term.Name(s"unary_$methodName"), inners map splitTree)
       case _ ⇒
         abort(s"Error: $stat, ${stat.structure}")
@@ -144,7 +149,7 @@ object YTApiGenerator {
     * @return eine Sequenz aus 1 oder 2 ASTs, je nach Art der Property.
     */
   def generateDefinitions(property: Property): Seq[Stat] = {
-    /* Kleine Utility-Methode um den syntaktischen Noise in der `(emptyRightTreeBuffer /: seq)`-Zeile zu reduzieren. */
+    /* Kleine Utility-Methode um den syntaktischen Noise in der `(emptyrightTreeBuffer /: seq)`-Zeile zu reduzieren. */
     def emptyRightTreeBuffer: Either[Unit, mutable.ListBuffer[Stat]] = Right(mutable.ListBuffer())
 
     val name = property.name
