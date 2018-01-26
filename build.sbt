@@ -68,6 +68,8 @@ lazy val commonSettings = Seq(
     * Das Compiler-Plugin muss sowohl bei der Makro-Definition als auch beim Expander vorhanden sein.
     */
   addCompilerPlugin(paradiseDependency),
+  scalacOptions += "-Xplugin-require:macroparadise",
+  scalacOptions in (Compile, console) ~= (_ filterNot (_ contains "paradise")), // macroparadise plugin doesn't work in repl yet.
 
   /**
     * Damit IntelliJ einfacher eigene Rebuilds machen kann.
@@ -76,6 +78,9 @@ lazy val commonSettings = Seq(
   Compile / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" /      "classes"),
   Test    / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" / "test-classes"),
   fork := true,
+
+  /** Clippy! */
+  clippyColorsEnabled := true,
 
   wartremoverWarnings ++= {
     import Wart._
@@ -96,7 +101,7 @@ lazy val commonSettings = Seq(
   }
 )
 
-lazy val paradiseDependency = "org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full
+lazy val paradiseDependency = "org.scalameta" % "paradise" % "3.0.0-M11" cross CrossVersion.full
 
 lazy val miscDependencies = Seq(
   /**
@@ -166,7 +171,7 @@ lazy val macros = (project in file("macros"))
   .settings(
     commonSettings,
     name := "analytico-macros",
-    libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value
+    libraryDependencies += "org.scalameta" %% "scalameta" % "1.8.0" % Provided
   )
 
 lazy val analytico = (project in file("analytico"))

@@ -3,27 +3,10 @@ package macros
 
 import scala.annotation.{ StaticAnnotation, compileTimeOnly }
 import scala.collection.mutable
-import scala.language.experimental.macros
-import scala.reflect.macros._
-
-import analytico.youtube.apis.{ ApiParameter, ApplicableParameter }
+import scala.collection.immutable.Seq
+import scala.meta._
 
 object YTApiGenerator {
-
-  /**
-    * Ein kleiner Wrapper, damit IntelliJ nicht meckert!
-    *
-    * @param c         der Compiler-Kontext. Achtung: Whitebox!
-    * @param annottees die zu annotierenden Deklarationen.
-    *
-    * @return die transformierte und damit einsatzbereite API.
-    *
-    * @see [[http://docs.scala-lang.org/overviews/macros/annotations.html#walkthrough Scala Docs]] für eine Erklärung,
-    *      warum es ein VarArgs-Parameter ist.
-    * @see [[ytApi]] für das zugehörige Makro.
-    */
-  def api_impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] =
-    new YTApiGenerator[c.type](c).api_impl(annottees)
 
   /**
     * Ein kleiner DSL-Wrapper für die API-Generierung.
@@ -33,7 +16,7 @@ object YTApiGenerator {
     * @param s das Symbol.
     */
   @compileTimeOnly("Diese Klasse wird nur für die DSL des Makros benutzt. Makro-Paradise vielleicht nicht aktiviert?")
-  final implicit class SymbolWrapper(val s: Symbol) extends Dummy {
+  final implicit class SymbolWrapper(val s: scala.Symbol) extends Dummy {
     /** Deine Parameter sind verschachtelt? */
     def apply(v: Any): this.type = impl(v)
 
@@ -62,41 +45,39 @@ object YTApiGenerator {
     * @version v0.2
     */
   @compileTimeOnly("Macro Paradise ist nicht aktiviert; Die Annotation wurde nicht erased.")
-  class ytApi extends StaticAnnotation {
-    def macroTransform(annottees: Any*): Any = macro YTApiGenerator.api_impl
+  class YouTubeApi extends StaticAnnotation {
+    inline def apply(defn: Any): Any = meta {
+      defn match {
+        case q"..$mods object $ename extends { ..$stats } with ..$inits { $self => ..$stats1 }" =>
+          expand(mods, ename, stats, inits, self, stats1)
+        case _ =>
+          abort(s"@ytApi must annotate an object definition with a non-empty body. ${defn.structure}")
+      }
+    }
   }
 
-}
+  def expand(mods: Seq[Mod],
+             objectName: Term.Name,
+             earlyInitializers: Seq[Stat],
+             ancestors: Seq[Ctor.Call],
+             selfType: Term.Param,
+             stats: Seq[Stat]): Defn.Object = {
+    val statements = for {
+      stat ← stats
+      property ← splitTree(stat).toList
+      newStatement ← generateDefinitions(property)
+    } yield newStatement
 
-/**
-  * Ein Macro Bundle für die einfachere Bearbeitung.
-  *
-  * @param c der Kontext.
-  * @tparam C der genaue Kontext
-  *
-  * @version v0.2
-  */
-@SuppressWarnings(Array(
-  "org.wartremover.warts.Any",
-  "org.wartremover.warts.Nothing",
-  "org.wartremover.warts.PublicInference"))
-class YTApiGenerator[C <: whitebox.Context](val c: C) {
+    val result =
+      q"""..$mods object $objectName extends { ..$earlyInitializers } with ..$ancestors { $selfType =>
+            ..$statements
+          }"""
 
-  import c.universe._
+    println(result)
+//    println(result.structure)
 
-  /** Das Klassensymbol eines einfachen Parameters. */
-  lazy val simpleParam: ClassSymbol = symbolOf[ApiParameter].asClass
-  /** Das Klassensymbol eines Parameters mit Kindern. */
-  lazy val applicParam: ClassSymbol = symbolOf[ApplicableParameter[Singleton]].asClass
-
-  /**
-    * Bricht die Ausführung des Makros mit einer Fehlermeldung ab.
-    *
-    * @param message die Nachricht
-    *
-    * @return Nichts.
-    */
-  def bail(message: String, pos: Position): Nothing = c.abort(pos, message)
+    result
+  }
 
   /**
     * Entscheidet anhand des Methodennamens, ob die Eigenschaft auch ein Part der Anfrage ist.
@@ -105,37 +86,52 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
     *
     * Die Methode `unary_+` stellt ein `+'symbol` dar, eine Eigenschaft welche auch ein Part ist.
     */
-  def isPart(name: TermName): Option[Boolean] = name.decodedName match {
-    case TermName("unary_-") ⇒ Some(false)
-    case TermName("unary_+") ⇒ Some(true)
+  def isPart(name: Term.Name): Option[Boolean] = name match {
+    case Term.Name("unary_-") ⇒ Some(false)
+    case Term.Name("unary_+") ⇒ Some(true)
     case _ ⇒ None
   }
 
   /**
     * Analysiert den gegebenen Baum und erstellt aus ihm Properties.
     *
-    * @param tree der AST-Baum, über den gearbeitet wird.
+    * @param stat der Code, über den gearbeitet wird.
     *
     * @return eine Property
     */
-  def splitTree(tree: Tree): Option[Property] = {
-
-    val (name, method, inner) = tree match {
-      case q"scala.Symbol(${symbolName: String}).${methodName: TermName}" ⇒
+  def splitTree(stat: Tree): Option[Property] = {
+    val (name, method, inner) = stat match {
+      case q"scala.Symbol(${symbolName @ Lit.String(_)}).$methodName" ⇒
         (symbolName, methodName, Nil)
-      case q"scala.Symbol(${symbolName: String})({..${inners: Seq[Tree]}}).${methodName: TermName}" ⇒
+      case q"scala.Symbol(${symbolName @ Lit.String(_)}){ ..$inners }.$methodName" ⇒
         (symbolName, methodName, inners map splitTree)
+      case q"scala.Symbol(${symbolName @ Lit.String(_)})( $inner ).$methodName" ⇒
+        (symbolName, methodName, splitTree(inner) :: Nil)
+
+        // IntelliJ
+
+      case Term.ApplyUnary(Term.Name(methodName), Term.Apply(Term.Select(Term.Name("scala"), Term.Name("Symbol")), Seq(Lit.String(symbolName)))) ⇒
+        (Lit.String(symbolName.drop(1)), Term.Name(s"unary_$methodName"), Nil)
+      case
+        Term.ApplyUnary(Term.Name(methodName),Term.Apply(Term.Apply(Term.Select(Term.Name("scala"), Term.Name("Symbol")), Seq(Lit.String(symbolName))), Seq(Term.Block(inners)))) ⇒
+        (Lit.String(symbolName.drop(1)), Term.Name(s"unary_$methodName"), inners map splitTree)
+      case _ ⇒
+        abort(s"Error: $stat, ${stat.structure}")
     }
 
     isPart(method) match {
       case None ⇒
-        c.error(tree.pos, s"The method name cannot be mapped to a valid state: `$method`. " +
+        abort(stat.pos, s"The method name cannot be mapped to a valid state: `$method`. " +
           "Consider using either `unary_-` or `unary_+`.")
-        None
       case Some(isPart) ⇒
-        Some(Property(tree.pos, isPart = isPart, name, inner: _*))
+        Some(Property(stat.pos, isPart = Lit.Boolean(isPart), name, inner: _*))
     }
   }
+
+  /** Das Klassensymbol eines einfachen Parameters. */
+  lazy val simpleParam = Ctor.Ref.Name("_root_.analytico.youtube.apis.ApiParameter")
+  /** Das Klassensymbol eines Parameters mit Kindern. */
+  lazy val applicParam = Ctor.Ref.Name("_root_.analytico.youtube.apis.ApplicableParameter")
 
   /**
     * Generiert aus der gegebenen Property die benötigten ASTs.
@@ -147,12 +143,13 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
     *
     * @return eine Sequenz aus 1 oder 2 ASTs, je nach Art der Property.
     */
-  def generateDefinitions(property: Property): Seq[Tree] = {
-    /* Kleine Utility-Methode um den syntaktischen Noise in der `(emptyrightTreeBuffer /: seq)`-Zeile zu reduzieren. */
-    def emptyRightTreeBuffer: Either[Unit, mutable.ListBuffer[Tree]] = Right(mutable.ListBuffer())
+  def generateDefinitions(property: Property): Seq[Stat] = {
+    /* Kleine Utility-Methode um den syntaktischen Noise in der `(emptyRightTreeBuffer /: seq)`-Zeile zu reduzieren. */
+    def emptyRightTreeBuffer: Either[Unit, mutable.ListBuffer[Stat]] = Right(mutable.ListBuffer())
 
     val name = property.name
-    val term = TermName(name)
+    val term = Pat.Var.Term(Term.Name(name.value))
+    val objectName = Term.Name(name.value + "Parameters")
     val isPart = property.isPart
     property.inners match {
       case Seq() ⇒
@@ -163,94 +160,18 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
           case (Right(acc), Some(innerProp)) ⇒ Right(acc ++= generateDefinitions(innerProp))
         } match {
           case _: Left[_, _] ⇒
-            c.warning(property.position,
+            abort(property.position,
               s"The property $name has an invalid child. Please check earlier error messages.")
-            Seq(q"val $term = ???")
 
           case Right(innerDefinitions) ⇒
-            val objectName = TermName(name + "Parameters")
             Seq(
               q"val $term = new $applicParam($name, $objectName, isPart = $isPart)",
               q"""
-               object $objectName {
-                 ..${innerDefinitions.toList}
-               }"""
+                 object $objectName {
+                   ..${innerDefinitions.toList}
+                 }"""
             )
         }
-    }
-  }
-
-  /**
-    * Die grundlegende Implementation des Makros.
-    *
-    * @example
-    * {{{
-    *   // Aus diesem hier:
-    *   @ytApi object ChannelRepresentation {
-    *     -'kind
-    *     -'etag
-    *     -'nextPageToken
-    *     -'prevPageToken
-    *     -'pageInfo {
-    *       -'totalResults
-    *       -'resultsPerPage
-    *     }
-    *     -'items {
-    *       -'kind
-    *       -'etag
-    *       +'id
-    *       +'snippet {
-    *         -'title
-    *       }
-    *     }
-    *   }
-    *
-    *   // Soll das hier werden:
-    *   object ChannelRepresentation {
-    *     val kind = new ApiParameter("kind", isPart = false)
-    *     val etag = new ApiParameter("etag", isPart = false)
-    *     val nextPageToken = new ApiParameter("nextPageToken", isPart = false)
-    *     val prevPageToken = new ApiParameter("prevPageToken", isPart = false)
-    *     val pageInfo = new ApplicableParameter("pageInfo", pageInfoParameters, isPart = false)
-    *     object pageInfoParameters {
-    *       val totalResults = new ApiParameter("totalResults", isPart = false)
-    *       val resultsPerPage = new ApiParameter("resultsPerPage", isPart = false)
-    *     }
-    *     val items = new ApplicableParameter("items", itemsParameters, isPart = false)
-    *     object itemsParameters {
-    *       val kind = new ApiParameter("kind", isPart = false)
-    *       val etag = new ApiParameter("etag", isPart = false)
-    *       val id = new ApiParameter("id", isPart = true)
-    *       val snippet = new ApplicableParameter("snippet", snippetParameters, isPart = true)
-    *       object snippetParameters {
-    *         val title = new ApiParameter("title", isPart = false)
-    *       }
-    *     }
-    *   }
-    * }}}
-    *
-    * @param annottees die zu transformierenden Elemente. Danke dafür, Macro Paradise!
-    *
-    * @return das transformierte Element.
-    */
-  def api_impl(annottees: Seq[Expr[Any]]): Expr[Any] = {
-    annottees.map(_.tree) match {
-      case List(q"object $objectName extends $parent { ..${body: Seq[Tree]} }") if body.nonEmpty =>
-        val properties = body flatMap splitTree
-
-        val statements = properties flatMap generateDefinitions
-
-        val result =
-          q"""
-             object $objectName extends $parent {
-               ..$statements
-             }"""
-
-        println(showCode(result))
-
-        c.Expr[Any](result)
-      case _ =>
-        bail("You must annotate an object definition with a non-empty body.", c.enclosingPosition)
     }
   }
 
@@ -284,6 +205,6 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
     *                 [[analytico.youtube.apis.ApplicableParameter ApplicableParameter]] generiert,
     *                 samt eigenem Objekt mit allen verschachelten Eigenschaften.
     */
-  case class Property(position: Position, isPart: Boolean, name: String, inners: Option[Property]*)
+  case class Property(position: Position, isPart: Lit.Boolean, name: Lit.String, inners: Option[Property]*)
 
 }

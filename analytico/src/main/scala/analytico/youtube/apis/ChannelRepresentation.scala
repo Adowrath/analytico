@@ -197,7 +197,7 @@ object ChannelRepresentation {
 }
 
 //import analytico.macros.YTApiGenerator._
-//@ytApi
+//@YouTubeApi
 //object ChannelRepresentation {
 //  -'kind
 //  -'etag

@@ -5,7 +5,7 @@ import scala.util.Try
 import scalafx.Includes._
 import scalafx.application.{ JFXApp, Platform }
 import scalafx.scene.Scene
-import scalafx.scene.control.{ Alert, ButtonType }
+import scalafx.scene.control.Alert
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.image.Image
 import scalafxml.core.{ DependenciesByType, FXMLView }
