@@ -4,8 +4,7 @@ package youtube
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import java.io.{ File, InputStreamReader }
-import java.nio.file.Files
+import java.io.InputStreamReader
 
 import com.google.api.client.auth.oauth2.StoredCredential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
@@ -15,6 +14,8 @@ import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 
+import analytico.Main.dataFolder
+
 /**
   * Enthält die Methode zur Authentifizierung mit der YT-API, `authorize`.
   *
@@ -23,11 +24,8 @@ import com.google.api.client.util.store.FileDataStoreFactory
   * @version 1.0
   */
 object YTAuth {
-  private[this] val credentialsDir = ".oauth-credentials"
   private[this] val httpTransport = new NetHttpTransport()
   private[this] val jsonFactory = new JacksonFactory()
-
-  private[this] val userHome = System.getProperty("user.home")
 
   /**
     * Gibt ein für den angegebenen Scope authorisiertes Credential zurück.
@@ -57,19 +55,21 @@ object YTAuth {
     val clientSecrets = GoogleClientSecrets.load(jsonFactory, clientSecretReader)
 
     // Checks that the defaults have been replaced (Default = "Enter X here").
-    if(clientSecrets.getDetails.getClientId.startsWith("Enter") || clientSecrets.getDetails.getClientSecret.startsWith("Enter ")) {
-      System.out.println("Enter Client ID and Secret from https://console.developers.google.com/project/_/apiui/credential " + "into src/main/resources/client_secrets.json")
+    if(clientSecrets.getDetails.getClientId.startsWith("Enter")
+      || clientSecrets.getDetails.getClientSecret.startsWith("Enter ")) {
+      System.out.println("Enter Client ID and Secret from " +
+        "https://console.developers.google.com/project/_/apiui/credential into src/main/resources/client_secrets.json")
       System.exit(1)
     }
 
 
-    val credentialsFile = new File(userHome + "/" + credentialsDir)
+    val credentialsFile = dataFolder / ".credentials"
     // Falls eine Re-Authorisierung gewünscht ist.
     if(reauthorize)
-      Files.delete(credentialsFile.toPath.resolve(datastoreName))
+      (credentialsFile / datastoreName).delete(swallowIOExceptions = true)
 
     // This creates the credentials datastore at ~/.oauth-credentials/${datastoreName}
-    val fileDataStoreFactory = new FileDataStoreFactory(credentialsFile)
+    val fileDataStoreFactory = new FileDataStoreFactory(credentialsFile.toJava)
     val datastore = fileDataStoreFactory.getDataStore[StoredCredential](datastoreName)
 
     val flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, clientSecrets, scopes.scopes.asJava)

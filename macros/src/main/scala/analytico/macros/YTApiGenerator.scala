@@ -22,7 +22,8 @@ object YTApiGenerator {
     *      warum es ein VarArgs-Parameter ist.
     * @see [[ytApi]] für das zugehörige Makro.
     */
-  def api_impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] = new YTApiGenerator[c.type](c).api_impl(annottees)
+  def api_impl(c: whitebox.Context)(annottees: c.Expr[Any]*): c.Expr[Any] =
+    new YTApiGenerator[c.type](c).api_impl(annottees)
 
   /**
     * Ein kleiner DSL-Wrapper für die API-Generierung.
@@ -162,7 +163,8 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
           case (Right(acc), Some(innerProp)) ⇒ Right(acc ++= generateDefinitions(innerProp))
         } match {
           case _: Left[_, _] ⇒
-            c.warning(property.position, s"The property $name has an invalid child. Please check earlier error messages.")
+            c.warning(property.position,
+              s"The property $name has an invalid child. Please check earlier error messages.")
             Seq(q"val $term = ???")
 
           case Right(innerDefinitions) ⇒
@@ -278,8 +280,9 @@ class YTApiGenerator[C <: whitebox.Context](val c: C) {
     * @param inners   allfällige innere Eigenschaften.
     *                 Wenn diese Liste leer ist, wird ein einfacher [[analytico.youtube.apis.ApiParameter ApiParameter]]
     *                 generiert.
-    *                 Wenn sie nicht leer ist, wird ein [[analytico.youtube.apis.ApplicableParameter ApplicableParameter]]
-    *                 generiert, samt eigenem Objekt mit allen verschachelten Eigenschaften.
+    *                 Wenn sie nicht leer ist, wird ein
+    *                 [[analytico.youtube.apis.ApplicableParameter ApplicableParameter]] generiert,
+    *                 samt eigenem Objekt mit allen verschachelten Eigenschaften.
     */
   case class Property(position: Position, isPart: Boolean, name: String, inners: Option[Property]*)
 

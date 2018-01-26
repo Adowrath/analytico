@@ -1,7 +1,7 @@
 lazy val commonSettings = Seq(
   organization := "com.github.adowrath",
   description := "Analytico - Analytics for you",
-  version := "0.1",
+  version := "0.1.0-SNAPSHOT",
   scalaVersion := "2.12.4",
   scalacOptions ++= Seq(
     "-target:jvm-1.8",
@@ -70,25 +70,23 @@ lazy val commonSettings = Seq(
   addCompilerPlugin(paradiseDependency),
 
   /**
-    * Cross-Building? Warum nicht!
-    */
-  crossScalaVersions := Seq("2.11.12", "2.12.4"/*, "2.13.0-M2"*/),
-
-  /**
     * Damit IntelliJ einfacher eigene Rebuilds machen kann.
     * https://github.com/JetBrains/sbt-ide-settings/tree/750b993453fb3d1f31f371968d06e3fc792870a1#using-the-settings-without-plugin
     */
   Compile / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" /      "classes"),
   Test    / SettingKey[Option[File]]("ide-output-directory") := Some(baseDirectory.value / "target" / "idea" / "test-classes"),
   fork := true,
+
   wartremoverWarnings ++= {
     import Wart._
     Warts.allBut(
+      Any,
       AsInstanceOf,
       DefaultArguments,
       ImplicitParameter,
       MutableDataStructures,
       NonUnitStatements,
+      Nothing,
       Overloading,
       Option2Iterable,
       Recursion,
@@ -116,7 +114,25 @@ lazy val miscDependencies = Seq(
   /**
     * FXML-Schnittstelle für Scala.
     */
-  "org.scalafx" %% "scalafxml-core-sfx8" % "0.4"
+  "org.scalafx" %% "scalafxml-core-sfx8" % "0.4",
+
+  /**
+    * Circe is a JSON-serializer.
+    */
+  "io.circe" %% "circe-core" % "0.9.0",
+  "io.circe" %% "circe-generic" % "0.9.0",
+  "io.circe" %% "circe-parser" % "0.9.0",
+
+  /**
+    * ScalaTest dependencies.
+    */
+  "org.scalactic" %% "scalactic" % "3.0.4",
+  "org.scalatest" %% "scalatest" % "3.0.4" % "test",
+
+  /**
+    * Better Files.
+    */
+  "com.github.pathikrit" %% "better-files" % "3.4.0"
 )
 
 lazy val excelDependencies = Seq(
@@ -141,7 +157,8 @@ lazy val root = (project in file("."))
   .settings(
     commonSettings,
     name := "analytico-root",
-    Compile / run := (analytico / Compile / run).evaluated
+    Compile / run := (analytico / Compile / run).evaluated,
+    cleanFiles += baseDirectory.value / ".data"
   )
   .aggregate(analytico, macros)
 

@@ -23,7 +23,8 @@ sealed trait Bool {
     *
     * @tparam Then  Rückgabetyp falls dies [[Bool.True]] ist.
     * @tparam Else  Rückgabetyp falls dies [[Bool.False]] ist.
-    * @tparam Upper Gemeinsamer Supertype von `Then` und `Else`. Wenn Dotty erscheint, wird dieser entfernt und mit `Then|Else` ersetzt.
+    * @tparam Upper Gemeinsamer Supertype von `Then` und `Else`.
+    *               Wenn Dotty erscheint, kann dieser entfernt und mit `Then|Else` ersetzt werden.
     */
   type If[Then <: Upper, Else <: Upper, Upper] <: Upper
   /** Eine Type-Level-Repräsentation des boolschen Not-Operators. */
@@ -69,7 +70,7 @@ object Bool {
     /**
       * @usecase type If[Then, _1, _2] = Then
       *
-      * Gibt den ersten Typ, `Then`, zurück.
+      *          Gibt den ersten Typ, `Then`, zurück.
       */
     override type If[Then <: Upper, Else <: Upper, Upper] = Then
     override type Not = False
@@ -93,7 +94,7 @@ object Bool {
     /**
       * @usecase type If[_0, Else, _2] = Else
       *
-      * Gibt den zweiten Typ, `Else`, zurück.
+      *          Gibt den zweiten Typ, `Else`, zurück.
       */
     override type If[Then <: Upper, Else <: Upper, Upper] = Else
     override type Not = True

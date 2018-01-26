@@ -1,0 +1,26 @@
+language: scala
+scala:
+  - 2.12.4
+jdk:
+  - oraclejdk8
+  - oraclejdk9
+#  - openjdk8
+#  missing javafx, so a no-build.
+matrix:
+  fast_finish: true
+# Seems to work, so for now, lets use it officially.
+#  allow_failures:
+#  - jdk: oraclejdk9
+
+before_script:
+  - "export DISPLAY=:99.0"
+  - "sh -e /etc/init.d/xvfb start"
+  - sleep 3 # give xvfb some time to start
+
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION clean coverage test
+
+after_success:
+  - sbt ++$TRAVIS_SCALA_VERSION coverageReport
+  - sbt ++$TRAVIS_SCALA_VERSION coverageAggregate
+  - sbt ++$TRAVIS_SCALA_VERSION codacyCoverage

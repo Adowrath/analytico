@@ -5,19 +5,24 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.util.Try
 import scalafx.Includes._
 import scalafx.application.Platform
-import scalafx.beans.property.ObjectProperty
+import scalafx.beans.property.{ BooleanProperty, ObjectProperty, ReadOnlyIntegerProperty }
 import scalafx.scene._
+import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.control._
 import scalafx.scene.layout._
 import scalafx.stage._
 import scalafxml.core.macros.sfxml
 
+import org.scalactic.TypeCheckedTripleEquals._
+
+import analytico.Main._
 import analytico.ui.StatPane._
 
 @sfxml
-class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace: VBox) {
+class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace: VBox, loadedData: Map[String, StatPane]) {
 
   /* Constants */
   lazy val stage: Stage = tabPane.getScene.getWindow.asInstanceOf[javafx.stage.Stage]
@@ -25,11 +30,24 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
   val panes: mutable.Map[String, StatPane] = mutable.Map.empty
   val currentCancelable: ObjectProperty[Option[Cancelable]] = ObjectProperty(None)
 
+  /* Initialization */
+  for((name, pane) ← loadedData) {
+    panes(name) = pane
+    val tab = new Tab
+    tab.text = name
+    tabPane += tab
+  }
+  tabPane.tabs.headOption.foreach(fillTab(_))
+
   /* Properties */
   def currentTab: Tab = tabPane.selectionModel().getSelectedItem
 
+  def currentIdx: ReadOnlyIntegerProperty = tabPane.selectionModel().selectedIndexProperty()
+
   def nodesToDisable: Seq[Node] =
     buttonSpace.children.map(n ⇒ n: Node).dropRight(1) :+ tabPane
+
+  val unsavedChanges: BooleanProperty = BooleanProperty(false)
 
   /* Utility methods */
   /**
@@ -42,9 +60,10 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     *
     * @return returns the new button
     */
-  def apiButton(buttonName: String, tab: Tab)(handler: String ⇒ (Cancelable, Future[StatPane])): Button = button(buttonName) {
+  def apiButton(buttonName: String, tab: Tab)
+               (handler: (String, BooleanProperty) ⇒ (Cancelable, Future[StatPane])): Button = button(buttonName) {
     disable(waiting = true)
-    val (cancelable, pane) = handler(tab.text())
+    val (cancelable, pane) = handler(tab.text(), unsavedChanges)
     currentCancelable() = Some(cancelable)
     pane map { pane ⇒
       panes(tab.text()) = pane
@@ -65,6 +84,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     tab.text = name
     tabPane += tab
     tabPane.selectionModel().select(tab)
+    unsavedChanges() = true
   }
 
   def disable(waiting: Boolean): Unit = {
@@ -77,34 +97,52 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
   }
 
   /* UI relevant. */
-  def uninitializedButtons(tab: Tab): Seq[Button] = Seq(
+  def uninitializedButtons(tab: Tab): Seq[Node] = Seq(
     apiButton("Mit YouTube anmelden", tab) {
       YoutubeStatPane.apply
     }
-    // TODO: Andere APIs
   ) ++ commonButtons(tab)
 
-  def commonButtons(tab: Tab): Seq[Button] = Seq(
+  def commonButtons(tab: Tab): Seq[Node] = Seq(
     button("Umbenennen") {
       renameTab(tab)
     },
     button("Abbrechen") {
       stopWaiting()
-    }
+    },
+    hbox(
+      button("<-", currentIdx === 0) {
+        moveTab(tab, -1)
+      },
+      button("->", currentIdx === tabPane.tabs.size() - 1) {
+        moveTab(tab, +1)
+      }
+    )
   )
 
-  /* Listeners */
-  tabPane.selectionModel().selectedItemProperty().onChange { (_, _, newTab) ⇒
-    panes.get(newTab.getText) match {
+  def moveTab(tab: Tab, offset: Int): Unit = {
+    val oldIndex = tabPane.tabs.indexOf(tab)
+    tabPane.tabs -= tab
+    tabPane.tabs.add(oldIndex + offset, tab)
+    tabPane.selectionModel().select(tab)
+    unsavedChanges() = true
+  }
+
+  def fillTab(tab: Tab): Unit = {
+    panes.get(tab.text()) match {
       case None | Some(NoStatsPane) ⇒
-        buttonSpace.children = uninitializedButtons(newTab)
+        buttonSpace.children = uninitializedButtons(tab)
 
       case Some(pane) ⇒
         buttonSpace.children = Nil
-        pane.initialize(newTab, Some(buttonSpace))
-        buttonSpace.children.addAll(commonButtons(newTab).map(_.delegate).asJava)
+        pane.initialize(tab, Some(buttonSpace))
+        buttonSpace.children ++= commonButtons(tab).map(_.delegate)
+        ()
     }
   }
+
+  /* Listeners */
+  tabPane.selectionModel().selectedItemProperty().onChange((_, _, newTab) ⇒ fillTab(newTab))
 
   def renameTab(tab: Tab): Unit = {
     val oldName = tab.text()
@@ -141,6 +179,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
         panes -= oldName
         tab.text() = newName
         panes(newName) = pane
+        unsavedChanges() = true
       }
     }
     dialog.show()
@@ -173,7 +212,36 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     dialog.show()
   }
 
-  def clicked(): Unit = {
+  def save(): Try[Unit] =
+    saveData(panes) map { _ ⇒
+      unsavedChanges() = false
+    }
 
+  Platform.runLater {
+    stage.onCloseRequest = { event ⇒
+      if(unsavedChanges()) {
+        val Save = new ButtonType("Speichern")
+        val Close = new ButtonType("Schliessen")
+
+        val dialog = new Alert(AlertType.Warning)
+        import dialog._
+        initOwner(stage)
+        title = "Sie haben ungesicherte Änderungen!"
+        headerText = "Wollen Sie die Änderungen speichern?"
+        buttonTypes = Seq(Save, Close, ButtonType.Cancel)
+
+        val result = dialog.showAndWait()
+
+        result match {
+          case Some(`Save`) ⇒
+            save().fold(throw _, _ ⇒ ())
+          case Some(`Close`) ⇒
+            ()
+          case Some(_) | None ⇒
+            event.consume()
+        }
+      }
+    }
   }
 }
+

@@ -71,17 +71,9 @@ class YouTubeData[S <: YTScope](apiAccess: YouTube) {
     def list(listItems: (ChannelRepresentation.type ⇒ ApiParameter)*)
             (implicit evidence: Filtered): Future[ChannelListResponse] = Future {
 
-      val parameters = listItems.map {
-        _ (ChannelRepresentation)
-      }
-      val fields = parameters.map {
-        _.repr
-      }.mkString(", ")
-      val parts = parameters.flatMap {
-        _.parts
-      }.map {
-        _.repr
-      }.mkString(",")
+      val parameters = listItems.map(_ apply ChannelRepresentation)
+      val fields = parameters.map(_.repr).mkString(", ")
+      val parts = parameters.flatMap(_.parts).map(_.repr).mkString(",")
 
       val channelRequest = apiAccess.channels.list(parts)
       isMine foreach (channelRequest setMine _)
