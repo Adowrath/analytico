@@ -14,8 +14,8 @@
 
 <VBox minHeight="350.0" minWidth="600.0" xmlns="http://javafx.com/javafx/8.0.121" xmlns:fx="http://javafx.com/fxml/1" fx:controller="analytico.ui.MainController">
     <MenuBar>
-        <Menu mnemonicParsing="false" text="File">
-            <MenuItem fx:id="menu1" mnemonicParsing="false" onAction="#save" text="Action 1" />
+        <Menu mnemonicParsing="false" text="_Datei">
+            <MenuItem fx:id="menu1" onAction="#save" text="_Speichern" />
         </Menu>
     </MenuBar>
      <GridPane VBox.vgrow="ALWAYS">

@@ -5,7 +5,7 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{ Failure, Success }
+import scala.util.Try
 import scalafx.Includes._
 import scalafx.application.Platform
 import scalafx.beans.property.{ BooleanProperty, ObjectProperty, ReadOnlyIntegerProperty }
@@ -37,10 +37,11 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     tab.text = name
     tabPane += tab
   }
-  fillTab(tabPane.tabs.get(0))
+  tabPane.tabs.headOption.foreach(fillTab(_))
 
   /* Properties */
   def currentTab: Tab = tabPane.selectionModel().getSelectedItem
+
   def currentIdx: ReadOnlyIntegerProperty = tabPane.selectionModel().selectedIndexProperty()
 
   def nodesToDisable: Seq[Node] =
@@ -141,7 +142,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
   }
 
   /* Listeners */
-  tabPane.selectionModel().selectedItemProperty().onChange((_,_,newTab) ⇒ fillTab(newTab))
+  tabPane.selectionModel().selectedItemProperty().onChange((_, _, newTab) ⇒ fillTab(newTab))
 
   def renameTab(tab: Tab): Unit = {
     val oldName = tab.text()
@@ -178,6 +179,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
         panes -= oldName
         tab.text() = newName
         panes(newName) = pane
+        unsavedChanges() = true
       }
     }
     dialog.show()
@@ -210,14 +212,10 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     dialog.show()
   }
 
-  def save(): Boolean = {
-    saveData(panes, stage) match {
-      case Success(_) ⇒
-        unsavedChanges() = false
-        true
-      case Failure(_) ⇒ ???
+  def save(): Try[Unit] =
+    saveData(panes) map { _ ⇒
+      unsavedChanges() = false
     }
-  }
 
   Platform.runLater {
     stage.onCloseRequest = { event ⇒
@@ -236,9 +234,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
 
         result match {
           case Some(`Save`) ⇒
-            if(!save()) {
-              event.consume()
-            }
+            save().fold(throw _, _ ⇒ ())
           case Some(`Close`) ⇒
             ()
           case Some(_) | None ⇒

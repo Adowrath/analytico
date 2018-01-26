@@ -5,8 +5,9 @@ import scala.util.Try
 import scalafx.Includes._
 import scalafx.application.{ JFXApp, Platform }
 import scalafx.scene.Scene
+import scalafx.scene.control.{ Alert, ButtonType }
+import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.image.Image
-import scalafx.stage.Stage
 import scalafxml.core.{ DependenciesByType, FXMLView }
 import java.io.FileOutputStream
 import java.time.{ DayOfWeek, LocalDate }
@@ -37,6 +38,22 @@ object Main extends JFXApp {
     }
   }
 
+  Thread setDefaultUncaughtExceptionHandler { (t, th) ⇒ Platform.runLater { uncaughtError(t, th) } }
+
+  def uncaughtError(t: Thread, th: Throwable): Unit = {
+    th.printStackTrace()
+
+    val dialog = new Alert(AlertType.Error)
+    import dialog._
+    initOwner(stage)
+    title = "Ein Schwerer Fehler ist aufgetreten!"
+    headerText = "Es ist ein schwerer Fehler aufgetretren."
+    contentText = th.getLocalizedMessage
+
+    val result = dialog.showAndWait()
+    println(result)
+  }
+
   def loadData(): Map[String, StatPane] = {
     if(defaultFile.exists) {
       val decodeResult = decodeFile[Map[String, StatPane]](defaultFile.toJava)
@@ -53,7 +70,7 @@ object Main extends JFXApp {
     }
   }
 
-  def saveData(panes: collection.Map[String, StatPane], stage: Stage): Try[Unit] = Try {
+  def saveData(panes: collection.Map[String, StatPane]): Try[Unit] = Try {
     for(bw ← defaultFile.bufferedWriter) {
       bw.write(panes.asJson.spaces2)
     }
