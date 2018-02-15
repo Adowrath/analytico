@@ -31,7 +31,11 @@ final case class ViewCount(yearWeek: YearWeek, viewType: ViewCount.ViewType,
       s"estimatedMinutes: $estimatedMinutes, avg: ${Try(averageDuration.toString()).getOrElse("{NaN}")}s)"
 
   /** Die ungefähre Zuschauzeit in Sekunden. */
-  def averageDuration: BigDecimal = estimatedMinutes * 60 / views
+  lazy val averageDuration: BigDecimal =
+    if(views === (0: BigDecimal))
+      0
+    else
+      estimatedMinutes * 60 / views
 }
 
 object ViewCount {

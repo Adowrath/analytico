@@ -151,7 +151,7 @@ object StatPane {
       checkBox("Live-Stats einbeziehen?", checked = liveStats)(()),
       checkBox("On Demand einbeziehen?", checked = videoStats)(()),
       checkBox("Kombiniert einbeziehen?", checked = combinedStats)(()),
-      button("Aktualisieren", disabled = valid) {
+      button("Aktualisieren", disabledWhen = valid) {
         initialize(tab, None)
       }
     )

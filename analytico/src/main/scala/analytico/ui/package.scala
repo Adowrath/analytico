@@ -15,19 +15,22 @@ package object ui {
     * Constructs a simple button with a custom handler, and, optionally,
     * a `disabled` property that will be bound to the button (`button <== disable`).
     *
-    * @param name     the text that will be displayed on the button.
-    * @param disabled this property will be bound to the button.
-    *                 Updates in its values will be reflected in the button, not the other way around.
-    * @param handler  a handler not requiring the event instance.
+    * @param name         the text that will be displayed on the button.
+    * @param disabledWhen this property will be bound to the button.
+    *                     Updates in its values will be reflected in the button, not the other way around.
+    * @param handler      a handler not requiring the event instance.
     * @tparam R a return type, used to avoid 'discarded non-Unit value' warnings.
     *           The resulting actual value is unused.
     *
     * @return a button with the specified handler
     */
-  def button[R](name: String, disabled: ObservableValue[Boolean, JLBoolean] = null)(handler: ⇒ R): Button = {
+  def button[R](name: String,
+                disabledWhen: ObservableValue[Boolean, JLBoolean] = null,
+                disabled: Boolean = false)(handler: ⇒ R): Button = {
     val b = new Button(name)
-    if(disabled !== null)
-      b.disable <== disabled
+    b.disable = disabled
+    if(disabledWhen !== null)
+      b.disable <== disabledWhen
     b.onAction = handle(handler)
     b
   }

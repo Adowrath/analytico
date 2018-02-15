@@ -44,9 +44,6 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
 
   def currentIdx: ReadOnlyIntegerProperty = tabPane.selectionModel().selectedIndexProperty()
 
-  def nodesToDisable: Seq[Node] =
-    buttonSpace.children.map(n ⇒ n: Node).dropRight(1) :+ tabPane
-
   val unsavedChanges: BooleanProperty = BooleanProperty(false)
 
   /* Utility methods */
@@ -62,12 +59,12 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     */
   def apiButton(buttonName: String, tab: Tab)
                (handler: (String, BooleanProperty) ⇒ (Cancelable, Future[StatPane])): Button = button(buttonName) {
-    disable(waiting = true)
+    toggleWaiting()
     val (cancelable, pane) = handler(tab.text(), unsavedChanges)
     currentCancelable() = Some(cancelable)
     pane map { pane ⇒
       panes(tab.text()) = pane
-      disable(waiting = false)
+      toggleWaiting()
       Platform.runLater {
         buttonSpace.children = Nil
         pane.initialize(tab, Some(buttonSpace))
@@ -87,12 +84,13 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     unsavedChanges() = true
   }
 
-  def disable(waiting: Boolean): Unit = {
-    nodesToDisable.foreach(_.disable = waiting)
-  }
+  def toggleWaiting(): Unit =
+    for(node ← buttonSpace.children :+ tabPane.delegate) {
+      node.disable = !node.disable()
+    }
 
   def stopWaiting(): Unit = {
-    disable(waiting = false)
+    toggleWaiting()
     currentCancelable().foreach(_.cancel())
   }
 
@@ -107,7 +105,7 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
     button("Umbenennen") {
       renameTab(tab)
     },
-    button("Abbrechen") {
+    button("Abbrechen", disabled = true) {
       stopWaiting()
     },
     hbox(
@@ -217,6 +215,10 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
       unsavedChanges() = false
     }
 
+  private[this] def finishAllThreads(): Unit = {
+    currentCancelable().foreach(_.cancel())
+  }
+
   Platform.runLater {
     stage.onCloseRequest = { event ⇒
       if(unsavedChanges()) {
@@ -235,8 +237,10 @@ class MainController(val menu1: MenuItem, val tabPane: TabPane, val buttonSpace:
         result match {
           case Some(`Save`) ⇒
             save().fold(throw _, _ ⇒ ())
+            finishAllThreads()
           case Some(`Close`) ⇒
             ()
+            finishAllThreads()
           case Some(_) | None ⇒
             event.consume()
         }
